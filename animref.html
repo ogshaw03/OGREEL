@@ -994,7 +994,7 @@ function getFiltered(){
     if(state.folder&&v.folder!==state.folder)return false;
     if(state.tag&&!(v.tags||[]).includes(state.tag))return false;
     if(state.filter==='fav'&&!v.fav)return false;
-    if(['yt','vm','nc','x'].includes(state.filter)&&v.platform!==state.filter)return false;
+    if(['yt','vm','nc','x','gd'].includes(state.filter)&&v.platform!==state.filter)return false;
     if(q&&!v.title.toLowerCase().includes(q)&&!(v.tags||[]).join(' ').toLowerCase().includes(q))return false;
     return true;
   }).sort((a,b)=>{
