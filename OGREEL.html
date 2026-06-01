@@ -351,7 +351,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
     <div class="toolbar">
       <div class="toolbar-left">
         <span class="count-badge" id="countLabel">0件</span>
-        <select class="sort-select" id="sortSelect" onchange="renderGrid()">
+        <select class="sort-select" id="sortSelect">
           <option value="newest">新しい順</option>
           <option value="oldest">古い順</option>
           <option value="alpha">名前順</option>
@@ -1363,6 +1363,10 @@ window.closeModal=function(id){
 window.closeModalBg=function(e,id){if(e.target.classList.contains('modal-bg'))closeModal(id)}
 
 document.getElementById('searchInput').addEventListener('input',renderGrid);
+document.getElementById('sortSelect').addEventListener('change',()=>{
+  if(gridObserver){gridObserver.disconnect();gridObserver=null;}
+  renderGrid();
+});
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape')['playerModal','addModal','folderModal','shareModal'].forEach(id=>{
     if(!document.getElementById(id).classList.contains('hidden'))closeModal(id);
