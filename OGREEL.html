@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OGREEL — 動画素材管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0d0d0f;--bg2:#141416;--bg3:#1c1c1f;--bg4:#232327;
+  --border:#2a2a2f;--border2:#3a3a42;
+  --text:#e8e8ec;--text2:#9a9aaa;--text3:#5a5a6a;
+  --accent:#7c6fff;--accent2:#5a4fff;
+  --red:#ff5a5a;--green:#5affa0;--amber:#ffb85a;
+  --radius:10px;--radius2:6px;
+  --font-head:'Syne',sans-serif;--font-body:'Noto Sans JP',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;display:flex;flex-direction:column;overflow:hidden;height:100vh}
+button{cursor:pointer;border:none;background:none;color:inherit;font-family:inherit}
+input,textarea,select{font-family:var(--font-body);color:var(--text);background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:8px 12px;outline:none;font-size:13px}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+input::placeholder,textarea::placeholder{color:var(--text3)}
+
+/* LOGIN SCREEN */
+.login-screen{position:fixed;inset:0;background:var(--bg);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-screen.hidden{display:none}
+.login-box{width:100%;max-width:400px;text-align:center}
+.login-logo{font-family:var(--font-head);font-size:36px;font-weight:700;letter-spacing:4px;margin-bottom:8px}
+.login-logo span{color:var(--accent)}
+.login-sub{font-size:13px;color:var(--text3);margin-bottom:48px;line-height:1.6}
+.google-btn{display:inline-flex;align-items:center;gap:12px;padding:12px 24px;background:#fff;color:#333;border-radius:var(--radius);font-size:14px;font-weight:500;transition:all .15s;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.google-btn:hover{background:#f5f5f5;transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.google-icon{width:20px;height:20px}
+
+/* WORKSPACE SCREEN */
+.ws-screen{position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.ws-screen.hidden{display:none}
+.ws-box{width:100%;max-width:480px;padding:20px 0}
+.ws-logo{font-family:var(--font-head);font-size:24px;font-weight:700;letter-spacing:3px;margin-bottom:4px}
+.ws-logo span{color:var(--accent)}
+.ws-user{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);margin-bottom:24px;font-size:13px}
+.ws-user img{width:28px;height:28px;border-radius:50%}
+.ws-user-name{flex:1;color:var(--text2)}
+.ws-logout{font-size:12px;color:var(--text3);padding:4px 8px;border-radius:4px}
+.ws-logout:hover{color:var(--red);background:rgba(255,90,90,.1)}
+.ws-section{margin-bottom:20px}
+.ws-label{font-size:10px;font-weight:500;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px}
+.ws-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.ws-item{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:border-color .15s}
+.ws-item:hover{border-color:var(--border2)}
+.ws-item-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.ws-item-info{flex:1}
+.ws-item-name{font-size:14px;font-weight:500}
+.ws-item-code{font-size:11px;color:var(--text3);margin-top:2px}
+.ws-item-del{font-size:12px;color:var(--text3);padding:4px 8px;border-radius:4px}
+.ws-role-badge{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;letter-spacing:.5px}
+.ws-item-actions{display:flex;gap:4px;align-items:center}
+.ws-item-delete{font-size:12px;color:var(--text3);padding:4px 8px;border-radius:4px}
+.ws-item-delete:hover{color:var(--red);background:rgba(255,90,90,.1)}
+.ws-role-owner{background:rgba(124,111,255,.2);color:#7c6fff;border:1px solid rgba(124,111,255,.4)}
+.ws-role-member{background:rgba(90,255,160,.15);color:#5affa0;border:1px solid rgba(90,255,160,.3)}
+.ws-item-del:hover{color:var(--red);background:rgba(255,90,90,.1)}
+.ws-divider{border:none;border-top:1px solid var(--border);margin:20px 0}
+.ws-form{display:flex;flex-direction:column;gap:10px}
+.ws-form input{width:100%}
+.ws-form-row{display:flex;gap:8px}
+.ws-form-row input{flex:1}
+.ws-empty{font-size:13px;color:var(--text3);padding:16px;text-align:center;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)}
+
+/* HEADER */
+.header{display:flex;align-items:center;gap:12px;padding:0 16px;height:52px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;z-index:100}
+.logo{font-family:var(--font-head);font-size:18px;font-weight:700;color:var(--text);letter-spacing:2px}
+.logo span{color:var(--accent)}
+.ws-switcher{display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);cursor:pointer;font-size:12px;color:var(--text2);transition:all .15s}
+.ws-switcher:hover{border-color:var(--border2);color:var(--text)}
+.ws-switcher-dot{width:7px;height:7px;border-radius:50%}
+.search-wrap{flex:1;max-width:360px;position:relative}
+.search-wrap input{width:100%;padding-left:32px;background:var(--bg3)}
+.search-wrap .si{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px}
+.header-actions{display:flex;gap:8px;margin-left:auto;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius2);font-size:13px;font-weight:500;transition:all .15s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-ghost{border:1px solid var(--border);color:var(--text2)}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text)}
+.btn-icon{width:32px;height:32px;border-radius:var(--radius2);display:flex;align-items:center;justify-content:center;font-size:15px}
+.btn-icon:hover{background:var(--bg4)}
+.user-avatar{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid var(--border)}
+.user-avatar:hover{border-color:var(--accent)}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+
+/* LAYOUT */
+.app-body{display:flex;flex:1;overflow:hidden}
+.sidebar{width:220px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;padding:12px 8px}
+.sidebar-section{margin-bottom:20px}
+.sidebar-label{font-size:10px;font-weight:500;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;padding:0 8px;margin-bottom:6px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--radius2);font-size:13px;color:var(--text2);cursor:pointer;transition:all .15s}
+.nav-item:hover{background:var(--bg4);color:var(--text)}
+.nav-item.active{background:var(--bg4);color:var(--text)}
+.nav-item .ni-icon{font-size:15px;width:18px;text-align:center}
+.nav-item .badge{margin-left:auto;background:var(--bg4);border:1px solid var(--border);border-radius:10px;font-size:10px;padding:1px 6px;color:var(--text3)}
+.nav-item.active .badge{background:var(--accent);border-color:var(--accent);color:#fff}
+.folder-item{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--radius2);font-size:12px;color:var(--text2);cursor:pointer;transition:all .15s}
+.folder-item:hover{background:var(--bg4);color:var(--text)}
+.folder-item.active{color:var(--accent)}
+.folder-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.new-folder-btn{display:flex;align-items:center;gap:6px;padding:5px 8px;font-size:12px;color:var(--text3);cursor:pointer;border-radius:var(--radius2);width:100%}
+.new-folder-btn:hover{color:var(--text2)}
+.tag-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid transparent;margin:2px;transition:all .15s;background:var(--bg4);color:var(--text2)}
+.tag-chip:hover{opacity:.8}
+.tag-chip.active{border-color:var(--accent);color:var(--accent)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.toolbar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0}
+.toolbar-left{display:flex;align-items:center;gap:8px;flex:1}
+.sort-select{border:1px solid var(--border);background:var(--bg3);padding:5px 8px;border-radius:var(--radius2);font-size:12px;color:var(--text2)}
+.view-toggle{display:flex;border:1px solid var(--border);border-radius:var(--radius2);overflow:hidden}
+.view-btn{width:30px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text3);background:var(--bg3);transition:all .15s}
+.view-btn.active,.view-btn:hover{background:var(--bg4);color:var(--text)}
+.count-badge{font-size:12px;color:var(--text3)}
+.grid-wrap{flex:1;overflow-y:auto;padding:16px}
+.video-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+.video-grid.list-view{grid-template-columns:1fr}
+
+/* CARDS */
+.vcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:border-color .15s;position:relative}
+.vcard:hover{border-color:var(--border2)}
+.vcard-thumb-wrap{position:relative;padding-bottom:56.25%;background:#111;overflow:hidden}
+.vcard-thumb-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.vcard-thumb-no-img{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:32px}
+.vcard-thumb-wrap .player-container{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.vcard-thumb-wrap .player-container iframe{width:100%;height:100%;border:none}
+.vcard-badge{position:absolute;top:8px;left:8px;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:500;letter-spacing:.5px;z-index:2}
+.badge-yt{background:#ff0000;color:#fff}
+.badge-vm{background:#1ab7ea;color:#fff}
+.badge-nc{background:#666;color:#fff}
+.badge-x{background:#000;color:#fff}
+.badge-gd{background:#1a73e8;color:#fff}
+.vcard-actions{position:absolute;top:6px;right:6px;display:flex;gap:4px;opacity:0;transition:opacity .15s;z-index:3}
+.vcard:hover .vcard-actions{opacity:1}
+.vcard-act-btn{width:26px;height:26px;border-radius:5px;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;transition:all .15s}
+.vcard-act-btn:hover{background:rgba(255,255,255,.15)}
+.vcard-body{padding:10px 12px}
+.vcard-title{font-size:13px;font-weight:500;line-height:1.4;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vcard-meta{font-size:11px;color:var(--text3);margin-bottom:6px}
+.vcard-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.vcard-tag{padding:2px 6px;border-radius:10px;font-size:10px;background:var(--bg4);color:var(--text2)}
+.vcard-note{font-size:11px;color:var(--text3);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.group-header{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:6px 2px;margin-top:8px}
+.group-header:first-child{margin-top:0}
+.group-header-label{font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:1px;color:var(--text2);text-transform:uppercase}
+.group-header-line{flex:1;height:1px;background:var(--border)}
+.group-header-count{font-size:11px;color:var(--text3)}
+.video-grid.list-view .vcard{display:flex;flex-direction:row}
+.video-grid.list-view .vcard-thumb-wrap{width:180px;flex-shrink:0;padding-bottom:0;height:101px}
+.video-grid.list-view .vcard-body{flex:1;display:flex;flex-direction:column;justify-content:center}
+
+/* MODALS */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:20px}
+.modal-bg.hidden{display:none}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
+.modal-title{font-family:var(--font-head);font-size:16px;font-weight:700}
+.modal-body{padding:20px}
+.form-row{margin-bottom:14px}
+.form-label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px}
+.form-input{width:100%}
+.form-row textarea.form-input{height:70px;resize:vertical}
+.url-parse-row{display:flex;gap:8px}
+.url-parse-row input{flex:1}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--border)}
+.player-info{padding:16px 20px}
+.player-title{font-family:var(--font-head);font-size:17px;font-weight:700;margin-bottom:8px}
+.player-meta{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text3);margin-bottom:10px;flex-wrap:wrap}
+.player-note{background:var(--bg3);border-radius:var(--radius2);padding:10px 12px;font-size:13px;color:var(--text2);margin-bottom:10px}
+.player-tags{display:flex;gap:6px;flex-wrap:wrap}
+.tags-input-wrap{display:flex;flex-wrap:wrap;gap:4px;align-items:center;border:1px solid var(--border);border-radius:var(--radius2);padding:4px 6px;min-height:36px;cursor:text}
+.tags-input-wrap:focus-within{border-color:var(--accent)}
+.tags-input-wrap input{border:none;background:none;padding:2px 4px;outline:none;font-size:13px;min-width:80px;flex:1}
+.tag-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:11px;background:var(--bg4);border:1px solid var(--border)}
+.tag-pill button{font-size:11px;color:var(--text3)}
+.tag-pill button:hover{color:var(--red)}
+.color-picker{display:flex;gap:6px;flex-wrap:wrap}
+.color-opt{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:.1s}
+.color-opt.selected,.color-opt:hover{border-color:#fff}
+.code-display{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:10px 14px;font-size:16px;font-family:monospace;letter-spacing:3px;text-align:center;color:var(--accent);cursor:pointer;user-select:all}
+.code-display:hover{border-color:var(--accent)}
+.allowed-user-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);font-size:13px}
+.allowed-user-email{flex:1;color:var(--text2)}
+.allowed-user-role{font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(124,111,255,.2);color:#7c6fff;border:1px solid rgba(124,111,255,.4)}
+.allowed-user-del{font-size:12px;color:var(--text3);padding:3px 7px;border-radius:4px}
+.allowed-user-del:hover{color:var(--red);background:rgba(255,90,90,.1)}
+.notification{position:fixed;bottom:24px;right:24px;background:var(--bg4);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 16px;font-size:13px;z-index:9999;animation:slideIn .2s ease;pointer-events:none}
+@keyframes slideIn{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:300px;color:var(--text3);padding:60px;grid-column:1/-1}
+.empty-icon{font-size:48px}
+.empty-title{font-family:var(--font-head);font-size:18px;font-weight:700;color:var(--text2)}
+.empty-desc{font-size:13px;text-align:center;line-height:1.6}
+.loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:12px}
+.loading-overlay.hidden{display:none}
+.spinner{width:32px;height:32px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div style="font-size:13px;color:var(--text3)">接続中...</div>
+</div>
+
+<!-- ACCESS DENIED SCREEN -->
+<div class="login-screen hidden" id="deniedScreen">
+  <div class="login-box">
+    <div class="login-logo">OGRE<span>EL</span></div>
+    <div class="login-sub" style="margin-bottom:24px">このアプリへのアクセス権がありません。<br>管理者に招待を依頼してください。</div>
+    <div id="deniedEmail" style="font-size:13px;color:var(--text3);margin-bottom:24px"></div>
+    <button class="btn btn-ghost" onclick="logoutUser()" style="margin:0 auto">別のアカウントでログイン</button>
+  </div>
+</div>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen hidden" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">OGRE<span>EL</span></div>
+    <div class="login-sub">アニメーション作業用<br>動画素材管理ツール</div>
+    <button class="google-btn" onclick="loginWithGoogle()">
+      <svg class="google-icon" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Googleでログイン
+    </button>
+  </div>
+</div>
+
+<!-- WORKSPACE SCREEN -->
+<div class="ws-screen hidden" id="wsScreen">
+  <div class="ws-box">
+    <div class="ws-logo" style="margin-bottom:16px">OGRE<span>EL</span></div>
+    <div class="ws-user" id="wsUserInfo"></div>
+
+    <div class="ws-section">
+      <div class="ws-label">参加済みワークスペース</div>
+      <div id="myWsList" class="ws-list"></div>
+    </div>
+
+    <hr class="ws-divider">
+
+    <div class="ws-section">
+      <div class="ws-label">新しく作成</div>
+      <div class="ws-form">
+        <input type="text" id="wsNewName" placeholder="ワークスペース名（例：Aさん用）">
+        <button class="btn btn-primary" onclick="createWorkspace()" style="align-self:flex-start">作成</button>
+      </div>
+    </div>
+
+    <hr class="ws-divider">
+
+    <div class="ws-section">
+      <div class="ws-label">招待コードで参加</div>
+      <div class="ws-form">
+        <div class="ws-form-row">
+          <input type="text" id="wsJoinCode" placeholder="コードを入力（例：ANIM-XXXX）" style="text-transform:uppercase">
+          <button class="btn btn-ghost" onclick="joinWorkspace()">参加</button>
+        </div>
+      </div>
+    </div>
+    <div id="adminSection" style="display:none">
+      <hr class="ws-divider">
+      <div class="ws-section">
+        <div class="ws-label">⚙ アクセス管理（管理者）</div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="url-parse-row">
+            <input type="email" class="form-input" id="adminNewEmail" placeholder="許可するメールアドレス">
+            <button class="btn btn-primary" onclick="addAllowedUser()">追加</button>
+          </div>
+        </div>
+        <div id="allowedUserList" style="display:flex;flex-direction:column;gap:6px"></div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.8;margin-top:8px">
+          ※ 管理者は常にアクセス可能です。追加したメールアドレスのGoogleアカウントのみアクセスできます。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="header">
+  <div class="logo">OGRE<span>EL</span></div>
+  <button class="ws-switcher" onclick="showWsScreen()" id="wsSwitcher">
+    <span class="ws-switcher-dot" id="wsSwitcherDot"></span>
+    <span id="wsSwitcherName">-</span>
+    <span style="color:var(--text3)">▾</span>
+  </button>
+  <div class="search-wrap">
+    <span class="si">🔍</span>
+    <input type="text" id="searchInput" placeholder="タイトル・タグで検索...">
+  </div>
+  <div class="header-actions">
+    <span class="sync-dot" title="リアルタイム同期中"></span>
+    <button class="btn btn-ghost" onclick="openShareModal()">🔗 共有</button>
+    <button class="btn btn-primary" onclick="openAddModal()">＋ 追加</button>
+    <img id="headerAvatar" class="user-avatar" src="" onclick="showWsScreen()" title="アカウント">
+  </div>
+</div>
+
+<div class="app-body">
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">ライブラリ</div>
+      <div class="nav-item active" onclick="setFilter('all',this)"><span class="ni-icon">📁</span>すべて<span class="badge" id="badge-all">0</span></div>
+      <div class="nav-item" onclick="setFilter('fav',this)"><span class="ni-icon">⭐</span>お気に入り<span class="badge" id="badge-fav">0</span></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">プラットフォーム</div>
+      <div class="nav-item" onclick="setFilter('yt',this)"><span class="ni-icon">▶️</span>YouTube<span class="badge" id="badge-yt">0</span></div>
+      <div class="nav-item" onclick="setFilter('vm',this)"><span class="ni-icon">🎬</span>Vimeo<span class="badge" id="badge-vm">0</span></div>
+      <div class="nav-item" onclick="setFilter('nc',this)"><span class="ni-icon">🎴</span>ニコニコ<span class="badge" id="badge-nc">0</span></div>
+      <div class="nav-item" onclick="setFilter('x',this)"><span class="ni-icon">✖️</span>X (Twitter)<span class="badge" id="badge-x">0</span></div>
+      <div class="nav-item" onclick="setFilter('gd',this)"><span class="ni-icon">📂</span>Google Drive<span class="badge" id="badge-gd">0</span></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">フォルダ</div>
+      <div id="folderList"></div>
+      <button class="new-folder-btn" onclick="openFolderModal()">＋ 新しいフォルダ</button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">タグ</div>
+      <div id="tagList" style="padding:2px 4px"></div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <span class="count-badge" id="countLabel">0件</span>
+        <select class="sort-select" id="sortSelect" onchange="renderGrid()">
+          <option value="newest">新しい順</option>
+          <option value="oldest">古い順</option>
+          <option value="alpha">名前順</option>
+          <option value="folder">フォルダ別</option>
+          <option value="platform">プラットフォーム別</option>
+          <option value="tag">タグ別</option>
+        </select>
+      </div>
+      <div class="view-toggle">
+        <button class="view-btn active" id="gridViewBtn" onclick="setView('grid')">⊞</button>
+        <button class="view-btn" id="listViewBtn" onclick="setView('list')">≡</button>
+      </div>
+    </div>
+    <div class="grid-wrap"><div class="video-grid" id="videoGrid"></div></div>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-bg hidden" id="addModal" onclick="closeModalBg(event,'addModal')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">動画を追加</div>
+      <button class="btn-icon" onclick="closeModal('addModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label class="form-label">URL *</label>
+        <div class="url-parse-row">
+          <input type="url" class="form-input" id="videoUrl" placeholder="YouTube / Vimeo / ニコニコ / X のURL">
+          <button class="btn btn-ghost" onclick="parseUrl()">取得</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">タイトル</label>
+        <input type="text" class="form-input" id="videoTitle" placeholder="タイトル（省略可）">
+      </div>
+      <div class="form-row">
+        <label class="form-label">フォルダ</label>
+        <select class="form-input" id="videoFolder"><option value="">なし</option></select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">タグ（Enterで追加）</label>
+        <div class="tags-input-wrap" id="tagsInputWrap">
+          <input type="text" id="tagInput" placeholder="タグを入力..." onkeydown="handleTagInput(event)">
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">メモ</label>
+        <textarea class="form-input" id="videoNote" placeholder="自由にメモ..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('addModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveVideo()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-bg hidden" id="playerModal" onclick="closeModalBg(event,'playerModal')">
+  <div class="modal" style="max-width:860px">
+    <div id="playerIframeWrap" style="display:none;position:relative;padding-bottom:56.25%;background:#000;border-radius:14px 14px 0 0;overflow:hidden">
+      <iframe id="playerIframe" style="position:absolute;inset:0;width:100%;height:100%;border:none" allowfullscreen allow="autoplay"></iframe>
+    </div>
+    <div class="player-info">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div class="player-title" id="playerTitle"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="editCurrent()">✏️ 編集</button>
+          <button class="btn-icon" onclick="closeModal('playerModal')" style="font-size:16px">✕</button>
+        </div>
+      </div>
+      <div class="player-meta" id="playerMeta"></div>
+      <div class="player-note" id="playerNote" style="display:none"></div>
+      <div class="player-tags" id="playerTags"></div>
+      <div style="margin-top:14px" id="playerOpenBtn">
+        <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="openCurrentUrl()">↗ 元ページで開く</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOLDER MODAL -->
+<div class="modal-bg hidden" id="folderModal" onclick="closeModalBg(event,'folderModal')">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <div class="modal-title">フォルダを作成</div>
+      <button class="btn-icon" onclick="closeModal('folderModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label class="form-label">フォルダ名</label>
+        <input type="text" class="form-input" id="folderName" placeholder="フォルダ名">
+      </div>
+      <div class="form-row">
+        <label class="form-label">カラー</label>
+        <div class="color-picker" id="colorPicker"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('folderModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveFolder()">作成</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="modal-bg hidden" id="shareModal" onclick="closeModalBg(event,'shareModal')">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title">招待コードを共有</div>
+      <button class="btn-icon" onclick="closeModal('shareModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label class="form-label">ワークスペース</label>
+        <div style="font-size:15px;font-weight:500;padding:4px 0" id="shareWsName"></div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">招待コード（クリックでコピー）</label>
+        <div class="code-display" id="shareCode" onclick="copyCode()"></div>
+      </div>
+      <div style="font-size:12px;color:var(--text3);line-height:1.8">
+        このコードを共有したい相手に伝えてください。<br>
+        相手は「招待コードで参加」から入力することで同じワークスペースにアクセスできます。
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="notification" style="display:none" class="notification"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc, getDoc, getDocs, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyASqL2Qp8sGrkzHz7J_HhE6QXntAZOO7RE",
+  authDomain: "animref-ef532.firebaseapp.com",
+  projectId: "animref-ef532",
+  storageBucket: "animref-ef532.firebasestorage.app",
+  messagingSenderId: "1029274074603",
+  appId: "1:1029274074603:web:f0ddc3eb69e35a47276dae"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+const COLORS=['purple','blue','green','amber','red','pink','gray'];
+const COLOR_HEX={purple:'#7c6fff',blue:'#5a8fff',green:'#5affa0',amber:'#ffb85a',red:'#ff5a5a',pink:'#ff5aaa',gray:'#5a5a6a'};
+const WS_COLORS=['#7c6fff','#5a8fff','#5affa0','#ffb85a','#ff5a5a','#ff5aaa'];
+
+let videos=[], folders=[];
+let state={filter:'all',folder:null,tag:null,view:'grid',editId:null,currentTags:[],selectedColor:'purple',currentPlayId:null};
+let currentUser=null;
+let currentWsId=null;
+let currentWsName=null;
+let currentWsCode=null;
+let unsubVideos=null, unsubFolders=null;
+
+// ── Auth State ──
+onAuthStateChanged(auth, async user=>{
+  document.getElementById('loadingOverlay').classList.add('hidden');
+  if(user){
+    currentUser=user;
+    document.getElementById('headerAvatar').src=user.photoURL||'';
+    document.getElementById('loginScreen').classList.add('hidden');
+    // Check access
+    const access=await checkAccess(user);
+    if(!access){
+      document.getElementById('deniedEmail').textContent='ログイン中: '+user.email;
+      document.getElementById('deniedScreen').classList.remove('hidden');
+      return;
+    }
+    // Show admin button if admin
+    // admin check done in loadAndShowWsScreen
+    // Try to restore last workspace
+    const lastWsRaw=localStorage.getItem('ogreel_last_ws');
+    if(lastWsRaw){
+      try{
+        const last=JSON.parse(lastWsRaw);
+        const list=await getUserWorkspaces();
+        const found=list.find(x=>x.id===last.id);
+        if(found){
+          enterWorkspace(last.id, last.name, last.code, last.color);
+          return;
+        }
+      }catch(e){}
+    }
+    await loadAndShowWsScreen();
+  } else {
+    currentUser=null;
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('wsScreen').classList.add('hidden');
+    document.getElementById('deniedScreen').classList.add('hidden');
+  }
+});
+
+window.loginWithGoogle=async function(){
+  try{
+    await signInWithPopup(auth, provider);
+  }catch(e){
+    notify('ログイン失敗: '+e.message);
+  }
+}
+
+window.logoutUser=async function(){
+  if(!confirm('ログアウトしますか？'))return;
+  if(unsubVideos)unsubVideos();
+  if(unsubFolders)unsubFolders();
+  localStorage.removeItem('ogreel_last_ws');
+  await signOut(auth);
+}
+
+// ── Access Control ──
+// Firestore: access_control/config -> { adminEmail, allowedEmails:[] }
+const ACCESS_DOC=doc(db,'access_control','config');
+
+async function checkAccess(user){
+  try{
+    const snap=await getDoc(ACCESS_DOC);
+    if(!snap.exists()){
+      // First user becomes admin
+      await setDoc(ACCESS_DOC,{adminEmail:user.email,allowedEmails:[],createdAt:Date.now()});
+      return 'admin';
+    }
+    const data=snap.data();
+    if(data.adminEmail===user.email)return 'admin';
+    if((data.allowedEmails||[]).includes(user.email))return 'member';
+    return false;
+  }catch(e){
+    // If rules not set yet, allow through
+    return 'member';
+  }
+}
+
+async function renderAllowedUsers(){
+  const snap=await getDoc(ACCESS_DOC);
+  const data=snap.data()||{};
+  const list=document.getElementById('allowedUserList');
+  list.innerHTML='';
+  // Admin row
+  const adminRow=document.createElement('div');
+  adminRow.className='allowed-user-item';
+  adminRow.innerHTML=`<span class="allowed-user-email">${data.adminEmail||''}</span><span class="allowed-user-role">管理者</span>`;
+  list.appendChild(adminRow);
+  // Members
+  (data.allowedEmails||[]).forEach(email=>{
+    const row=document.createElement('div');
+    row.className='allowed-user-item';
+    row.innerHTML=`<span class="allowed-user-email">${email}</span><button class="allowed-user-del" onclick="removeAllowedUser('${email}')">削除</button>`;
+    list.appendChild(row);
+  });
+  if(!(data.allowedEmails||[]).length){
+    const empty=document.createElement('div');
+    empty.style.cssText='font-size:12px;color:var(--text3);padding:8px';
+    empty.textContent='管理者以外の許可ユーザーはいません';
+    list.appendChild(empty);
+  }
+}
+
+window.addAllowedUser=async function(){
+  const email=document.getElementById('adminNewEmail').value.trim().toLowerCase();
+  if(!email){notify('メールアドレスを入力してください');return}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){notify('正しいメールアドレスを入力してください');return}
+  try{
+    const snap=await getDoc(ACCESS_DOC);
+    const data=snap.data()||{};
+    if(data.adminEmail===email){notify('管理者は既に追加されています');return}
+    const emails=[...(data.allowedEmails||[])];
+    if(emails.includes(email)){notify('既に追加されています');return}
+    emails.push(email);
+    await updateDoc(ACCESS_DOC,{allowedEmails:emails});
+    document.getElementById('adminNewEmail').value='';
+    await renderAllowedUsers();
+    notify('追加しました: '+email);
+  }catch(e){notify('追加失敗: '+e.message)}
+}
+
+window.removeAllowedUser=async function(email){
+  if(!confirm(`${email} を削除しますか？`))return;
+  try{
+    const snap=await getDoc(ACCESS_DOC);
+    const data=snap.data()||{};
+    const emails=(data.allowedEmails||[]).filter(e=>e!==email);
+    await updateDoc(ACCESS_DOC,{allowedEmails:emails});
+    await renderAllowedUsers();
+    notify('削除しました');
+  }catch(e){notify('削除失敗: '+e.message)}
+}
+
+// ── Workspace list stored in Firestore per user ──
+// Path: users/{uid}/workspaces/{wsId} -> {name, code, joinedAt}
+async function getUserWorkspaces(){
+  if(!currentUser)return[];
+  const snap=await getDocs(collection(db,'users',currentUser.uid,'workspaces'));
+  return snap.docs.map(d=>({id:d.id,...d.data()}));
+}
+async function addUserWorkspace(ws, isOwner=false){
+  if(!currentUser)return;
+  await setDoc(doc(db,'users',currentUser.uid,'workspaces',ws.id),{name:ws.name,code:ws.code,isOwner,joinedAt:Date.now()});
+}
+async function removeUserWorkspace(wsId){
+  if(!currentUser)return;
+  await deleteDoc(doc(db,'users',currentUser.uid,'workspaces',wsId));
+}
+
+// ── Workspace Screen ──
+async function loadAndShowWsScreen(){
+  renderWsUserInfo();
+  const list=await getUserWorkspaces();
+  renderWsList(list);
+  // Show admin section if admin
+  const access=await checkAccess(currentUser);
+  if(access==='admin'){
+    document.getElementById('adminSection').style.display='';
+    await renderAllowedUsers();
+  } else {
+    document.getElementById('adminSection').style.display='none';
+  }
+  document.getElementById('wsScreen').classList.remove('hidden');
+}
+
+window.showWsScreen=async function(){
+  if(unsubVideos){unsubVideos();unsubVideos=null}
+  if(unsubFolders){unsubFolders();unsubFolders=null}
+  await loadAndShowWsScreen();
+}
+
+function renderWsUserInfo(){
+  const u=currentUser;
+  document.getElementById('wsUserInfo').innerHTML=`
+    <img src="${u.photoURL||''}" onerror="this.style.display='none'">
+    <span class="ws-user-name">${u.displayName||u.email||'ユーザー'}</span>
+    <button class="ws-logout" onclick="logoutUser()">ログアウト</button>`;
+}
+
+function renderWsList(list){
+  const el=document.getElementById('myWsList');
+  if(!list.length){
+    el.innerHTML=`<div class="ws-empty">まだワークスペースがありません<br>下から作成または参加してください</div>`;
+    return;
+  }
+  el.innerHTML='';
+  list.forEach((ws,i)=>{
+    const color=WS_COLORS[i%WS_COLORS.length];
+    const item=document.createElement('div');
+    item.className='ws-item';
+    const roleBadge=ws.isOwner
+      ?`<span class="ws-role-badge ws-role-owner">作成者</span>`
+      :`<span class="ws-role-badge ws-role-member">参加中</span>`;
+    item.innerHTML=`
+      <span class="ws-item-dot" style="background:${color}"></span>
+      <div class="ws-item-info">
+        <div class="ws-item-name" style="display:flex;align-items:center;gap:7px">${ws.name}${roleBadge}</div>
+        <div class="ws-item-code">招待コード: ${ws.code}</div>
+      </div>
+      <div class="ws-item-actions">
+        ${ws.isOwner?`<button class="ws-item-delete" onclick="event.stopPropagation();deleteWorkspace('${ws.id}','${ws.name}')" title="完全削除（データも削除）">🗑️</button>`:''}
+        <button class="ws-item-del" onclick="event.stopPropagation();leaveWorkspace('${ws.id}')" title="リストから削除">✕</button>
+      </div>`;
+    item.addEventListener('click',()=>enterWorkspace(ws.id, ws.name, ws.code, color));
+    el.appendChild(item);
+  });
+}
+
+window.createWorkspace=async function(){
+  const name=document.getElementById('wsNewName').value.trim();
+  if(!name){notify('名前を入力してください');return}
+  const code='ANIM-'+Math.random().toString(36).slice(2,6).toUpperCase();
+  const wsRef=doc(collection(db,'workspaces'));
+  await setDoc(wsRef,{name,code,createdAt:Date.now(),createdBy:currentUser.uid});
+  const ws={id:wsRef.id,name,code};
+  await addUserWorkspace(ws, true);
+  document.getElementById('wsNewName').value='';
+  notify('ワークスペースを作成しました');
+  const list=await getUserWorkspaces();
+  const color=WS_COLORS[(list.length-1)%WS_COLORS.length];
+  enterWorkspace(wsRef.id, name, code, color);
+}
+
+window.joinWorkspace=async function(){
+  const code=document.getElementById('wsJoinCode').value.trim().toUpperCase();
+  if(!code){notify('コードを入力してください');return}
+  const q=query(collection(db,'workspaces'),where('code','==',code));
+  const snap=await getDocs(q);
+  if(snap.empty){notify('コードが見つかりません');return}
+  const wsDoc=snap.docs[0];
+  const ws={id:wsDoc.id,name:wsDoc.data().name,code};
+  await addUserWorkspace(ws);
+  document.getElementById('wsJoinCode').value='';
+  notify(`「${ws.name}」に参加しました`);
+  const list=await getUserWorkspaces();
+  const color=WS_COLORS[(list.length-1)%WS_COLORS.length];
+  enterWorkspace(ws.id, ws.name, code, color);
+}
+
+window.leaveWorkspace=async function(id){
+  if(!confirm('リストから削除しますか？（データは消えません）'))return;
+  await removeUserWorkspace(id);
+  const list=await getUserWorkspaces();
+  renderWsList(list);
+  notify('ワークスペースをリストから削除しました');
+}
+
+window.deleteWorkspace=async function(id, name){
+  if(!confirm(`「${name}」を完全削除しますか？\n\n動画・フォルダを含むすべてのデータが削除されます。\nこの操作は元に戻せません。`))return;
+  try{
+    notify('削除中...');
+    // Delete videos
+    const videoSnap=await getDocs(collection(db,'workspaces',id,'videos'));
+    for(const d of videoSnap.docs) await deleteDoc(d.ref);
+    // Delete folders
+    const folderSnap=await getDocs(collection(db,'workspaces',id,'folders'));
+    for(const d of folderSnap.docs) await deleteDoc(d.ref);
+    // Delete workspace doc
+    await deleteDoc(doc(db,'workspaces',id));
+    // Remove from user's list
+    await removeUserWorkspace(id);
+    const list=await getUserWorkspaces();
+    renderWsList(list);
+    notify('ワークスペースを完全削除しました');
+  }catch(e){notify('削除失敗: '+e.message)}
+}
+
+function enterWorkspace(id, name, code, color){
+  currentWsId=id; currentWsName=name; currentWsCode=code;
+  localStorage.setItem('ogreel_last_ws',JSON.stringify({id,name,code,color}));
+  document.getElementById('wsScreen').classList.add('hidden');
+  document.getElementById('wsSwitcherName').textContent=name;
+  document.getElementById('wsSwitcherDot').style.background=color||'#7c6fff';
+  startListeners();
+}
+
+// ── Realtime Listeners ──
+function startListeners(){
+  if(unsubVideos)unsubVideos();
+  if(unsubFolders)unsubFolders();
+  unsubVideos=onSnapshot(
+    query(collection(db,'workspaces',currentWsId,'videos'),orderBy('createdAt','desc')),
+    snap=>{videos=snap.docs.map(d=>({id:d.id,...d.data()}));renderAll();}
+  );
+  unsubFolders=onSnapshot(
+    collection(db,'workspaces',currentWsId,'folders'),
+    snap=>{folders=snap.docs.map(d=>({id:d.id,...d.data()}));renderAll();}
+  );
+}
+
+// ── Share ──
+window.openShareModal=function(){
+  if(!currentWsId){notify('ワークスペースを選択してください');return}
+  document.getElementById('shareWsName').textContent=currentWsName;
+  document.getElementById('shareCode').textContent=currentWsCode||'';
+  document.getElementById('shareModal').classList.remove('hidden');
+}
+window.copyCode=function(){
+  const code=document.getElementById('shareCode').textContent;
+  navigator.clipboard.writeText(code).then(()=>notify('コードをコピーしました'));
+}
+
+// ── Helpers ──
+function notify(msg){const n=document.getElementById('notification');n.textContent=msg;n.style.display='block';setTimeout(()=>n.style.display='none',2200)}
+function detectPlatform(url){
+  if(!url)return'other';
+  if(/youtube\.com|youtu\.be/.test(url))return'yt';
+  if(/vimeo\.com/.test(url))return'vm';
+  if(/nicovideo\.jp|nico\.ms/.test(url))return'nc';
+  if(/twitter\.com|x\.com/.test(url))return'x';
+  if(/drive\.google\.com/.test(url))return'gd';
+  return'other';
+}
+function getYtId(url){const m=url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);return m?m[1]:null}
+function getVmId(url){const m=url.match(/vimeo\.com\/(\d+)/);return m?m[1]:null}
+function getNcId(url){const m=url.match(/\/watch\/((?:sm|nm)\d+)/);return m?m[1]:null}
+function getGdId(url){
+  const m=url.match(/\/d\/([a-zA-Z0-9_-]+)/)||url.match(/id=([a-zA-Z0-9_-]+)/);
+  return m?m[1]:null;
+}
+function getThumb(v){
+  if(v.platform==='yt'&&v.vid)return`https://img.youtube.com/vi/${v.vid}/mqdefault.jpg`;
+  if(v.platform==='vm'&&v.thumb)return v.thumb;
+  return'';
+}
+function platformLabel(p){return{yt:'YouTube',vm:'Vimeo',nc:'ニコニコ',x:'X',gd:'Drive'}[p]||'OTHER'}
+function platformClass(p){return'badge-'+(p||'yt')}
+// badge-gd defined in CSS
+
+window.parseUrl=async function(){
+  const url=document.getElementById('videoUrl').value.trim();
+  if(!url)return;
+  const p=detectPlatform(url);
+  const ti=document.getElementById('videoTitle');
+  if(p==='yt'){if(!ti.value)ti.value='(YouTube動画)'}
+  else if(p==='vm'){
+    try{
+      const r=await fetch(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`);
+      const d=await r.json();
+      if(!ti.value)ti.value=d.title||'';
+      document.getElementById('videoUrl').dataset.vimeoThumb=d.thumbnail_url||'';
+    }catch(e){}
+  }else if(p==='nc'){if(!ti.value)ti.value='(ニコニコ動画)'}
+  else if(p==='x'){if(!ti.value)ti.value='(X投稿)'}
+  else if(p==='gd'){if(!ti.value)ti.value='(Googleドライブ動画)'}
+  notify('URL解析完了');
+}
+
+window.openAddModal=function(id=null){
+  if(!currentWsId){notify('ワークスペースを選択してください');return}
+  state.editId=id;state.currentTags=[];
+  const v=id?videos.find(x=>x.id===id):null;
+  document.getElementById('modalTitle').textContent=v?'動画を編集':'動画を追加';
+  document.getElementById('videoUrl').value=v?v.url:'';
+  document.getElementById('videoTitle').value=v?v.title:'';
+  document.getElementById('videoNote').value=v?v.note||'':'';
+  if(v&&v.tags)state.currentTags=[...v.tags];
+  renderTagPills();
+  populateFolderSelect(v?v.folder||'':'');
+  document.getElementById('addModal').classList.remove('hidden');
+}
+
+function populateFolderSelect(sel=''){
+  const s=document.getElementById('videoFolder');
+  s.innerHTML='<option value="">なし</option>';
+  folders.forEach(f=>{
+    const o=document.createElement('option');
+    o.value=f.id;o.textContent=f.name;
+    if(f.id===sel)o.selected=true;
+    s.appendChild(o);
+  });
+}
+
+window.handleTagInput=function(e){
+  if(e.key==='Enter'||e.key===','){
+    e.preventDefault();
+    const v=e.target.value.trim().replace(',','');
+    if(v&&!state.currentTags.includes(v)){state.currentTags.push(v);renderTagPills()}
+    e.target.value='';
+  }
+}
+function renderTagPills(){
+  const wrap=document.getElementById('tagsInputWrap');
+  wrap.querySelectorAll('.tag-pill').forEach(x=>x.remove());
+  const inp=document.getElementById('tagInput');
+  state.currentTags.forEach(t=>{
+    const p=document.createElement('span');
+    p.className='tag-pill';
+    p.innerHTML=`${t}<button onclick="removeTag('${t}')">✕</button>`;
+    wrap.insertBefore(p,inp);
+  });
+}
+window.removeTag=function(t){state.currentTags=state.currentTags.filter(x=>x!==t);renderTagPills()}
+
+window.saveVideo=async function(){
+  const url=document.getElementById('videoUrl').value.trim();
+  if(!url){notify('URLを入力してください');return}
+  const p=detectPlatform(url);
+  const vid=p==='yt'?getYtId(url):p==='vm'?getVmId(url):p==='nc'?getNcId(url):p==='gd'?getGdId(url):null;
+  const title=document.getElementById('videoTitle').value.trim()||(platformLabel(p)+' 動画');
+  const folder=document.getElementById('videoFolder').value;
+  const note=document.getElementById('videoNote').value.trim();
+  const thumb=p==='vm'?document.getElementById('videoUrl').dataset.vimeoThumb||'':'';
+  const data={url,vid:vid||null,platform:p,title,tags:state.currentTags,folder,note,thumb,fav:false,createdAt:Date.now(),addedBy:currentUser.uid,addedByName:currentUser.displayName||''};
+  try{
+    if(state.editId){
+      const existing=videos.find(x=>x.id===state.editId);
+      await updateDoc(doc(db,'workspaces',currentWsId,'videos',state.editId),{...data,fav:existing?existing.fav:false});
+    }else{
+      await addDoc(collection(db,'workspaces',currentWsId,'videos'),data);
+    }
+    closeModal('addModal');notify('保存しました');
+  }catch(e){notify('保存失敗: '+e.message)}
+}
+
+window.deleteVideo=async function(id){
+  if(!confirm('削除しますか？'))return;
+  try{await deleteDoc(doc(db,'workspaces',currentWsId,'videos',id));notify('削除しました')}
+  catch(e){notify('削除失敗')}
+}
+window.toggleFav=async function(id){
+  const v=videos.find(x=>x.id===id);if(!v)return;
+  try{
+    await updateDoc(doc(db,'workspaces',currentWsId,'videos',id),{fav:!v.fav});
+    notify(!v.fav?'お気に入りに追加':'お気に入りから削除');
+  }catch(e){notify('更新失敗')}
+}
+
+function getPlayerEmbedUrl(v){
+  if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&rel=0&modestbranding=1`;
+  if(v.platform==='vm'&&v.vid)return`https://player.vimeo.com/video/${v.vid}?autoplay=1`;
+  if(v.platform==='nc'&&v.vid)return`https://embed.nicovideo.jp/watch/${v.vid}?autoplay=1`;
+  if(v.platform==='gd'&&v.vid)return`https://drive.google.com/file/d/${v.vid}/preview?autoplay=1`;
+  return null;
+}
+window.openPlayer=function(id){
+  const v=videos.find(x=>x.id===id);if(!v)return;
+  state.currentPlayId=id;
+  // iframe player
+  const embedUrl=getPlayerEmbedUrl(v);
+  const wrap=document.getElementById('playerIframeWrap');
+  const iframe=document.getElementById('playerIframe');
+  if(embedUrl){
+    iframe.src=embedUrl;
+    wrap.style.display='block';
+  }else{
+    iframe.src='';
+    wrap.style.display='none';
+  }
+  document.getElementById('playerTitle').textContent=v.title;
+  const folder=v.folder?folders.find(f=>f.id===v.folder):null;
+  document.getElementById('playerMeta').innerHTML=
+    `<span class="vcard-badge ${platformClass(v.platform)}" style="position:static">${platformLabel(v.platform)}</span>`+
+    (folder?`<span>📁 ${folder.name}</span>`:'')+
+    (v.addedByName?`<span>👤 ${v.addedByName}</span>`:'');
+  const ni=document.getElementById('playerNote');
+  if(v.note){ni.textContent=v.note;ni.style.display='block'}else{ni.style.display='none'}
+  document.getElementById('playerTags').innerHTML=(v.tags||[]).map(t=>`<span class="vcard-tag">${t}</span>`).join('');
+  document.getElementById('playerModal').classList.remove('hidden');
+}
+window.openCurrentUrl=function(){
+  const v=videos.find(x=>x.id===state.currentPlayId);
+  if(v)window.open(v.url,'_blank');
+}
+window.editCurrent=function(){closeModal('playerModal');openAddModal(state.currentPlayId)}
+
+window.setFilter=function(f,el){
+  state.filter=f;state.folder=null;state.tag=null;
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.querySelectorAll('.folder-item').forEach(x=>x.classList.remove('active'));
+  renderGrid();
+}
+window.setFolder=function(id){
+  state.folder=id;state.filter=null;state.tag=null;
+  document.querySelectorAll('.nav-item,.folder-item').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.folder-item').forEach(x=>{if(x.dataset.id===id)x.classList.add('active')});
+  renderGrid();
+}
+window.setTagFilter=function(t){
+  state.tag=t;state.filter=null;state.folder=null;
+  document.querySelectorAll('.nav-item,.folder-item').forEach(x=>x.classList.remove('active'));
+  renderGrid();
+}
+window.setView=function(v){
+  state.view=v;
+  document.getElementById('gridViewBtn').classList.toggle('active',v==='grid');
+  document.getElementById('listViewBtn').classList.toggle('active',v==='list');
+  document.getElementById('videoGrid').classList.toggle('list-view',v==='list');
+}
+
+function getFiltered(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  return videos.filter(v=>{
+    if(state.folder&&v.folder!==state.folder)return false;
+    if(state.tag&&!(v.tags||[]).includes(state.tag))return false;
+    if(state.filter==='fav'&&!v.fav)return false;
+    if(['yt','vm','nc','x','gd'].includes(state.filter)&&v.platform!==state.filter)return false;
+    if(q&&!v.title.toLowerCase().includes(q)&&!(v.tags||[]).join(' ').toLowerCase().includes(q))return false;
+    return true;
+  }).sort((a,b)=>{
+    const s=document.getElementById('sortSelect').value;
+    if(s==='newest'||s==='folder'||s==='platform'||s==='tag')return b.createdAt-a.createdAt;
+    if(s==='oldest')return a.createdAt-b.createdAt;
+    return a.title.localeCompare(b.title,'ja');
+  });
+}
+
+let gridObserver=null;
+function getEmbedUrl(v){
+  if(v.platform==='x')return null;
+  if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&loop=1&playlist=${v.vid}`;
+  if(v.platform==='vm'&&v.vid)return`https://player.vimeo.com/video/${v.vid}?autoplay=1&muted=1&controls=0&loop=1`;
+  if(v.platform==='nc'&&v.vid)return`https://embed.nicovideo.jp/watch/${v.vid}?autoplay=1&muted=1`;
+  if(v.platform==='gd'&&v.vid)return`https://drive.google.com/file/d/${v.vid}/preview?autoplay=1`;
+  return null;
+}
+function setupObserver(){
+  if(gridObserver)gridObserver.disconnect();
+  gridObserver=new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      const pc=entry.target.querySelector('.player-container');
+      const embUrl=entry.target.dataset.emburl;
+      const platform=entry.target.dataset.platform;
+      if(!pc||!embUrl)return;
+      if(entry.isIntersecting){
+        if(!pc.querySelector('iframe')){
+          const iframe=document.createElement('iframe');
+          iframe.src=embUrl;
+          iframe.allowFullscreen=true;
+          iframe.allow='autoplay';
+          // Loop for nc/gd by reloading iframe on end
+          if(platform==='nc'||platform==='gd'){
+            iframe.addEventListener('load',()=>{
+              // Poll: reload after estimated end (fallback loop via timeout)
+            });
+            // Reload every time it likely ends — use postMessage for nc if possible
+            pc._loopTimer=setInterval(()=>{
+              const el=pc.querySelector('iframe');
+              if(el){el.src=el.src;}
+            }, platform==='gd'?300000:600000); // gd:5min, nc:10min fallback
+          }
+          pc.appendChild(iframe);
+        }
+      }else{
+        if(pc._loopTimer){clearInterval(pc._loopTimer);delete pc._loopTimer;}
+        pc.innerHTML='';
+      }
+    });
+  },{threshold:0.1});
+}
+
+function makeCard(v){
+    const thumb=getThumb(v);
+    const folderName=v.folder?folders.find(f=>f.id===v.folder)?.name||'':'';
+    const card=document.createElement('div');
+    card.className='vcard';
+    card.innerHTML=`
+      <div class="vcard-thumb-wrap">
+        ${thumb?`<img src="${thumb}" alt="" loading="lazy">`:`<div class="vcard-thumb-no-img">▶</div>`}
+        <div class="player-container" id="pc-${v.id}"></div>
+        <span class="vcard-badge ${platformClass(v.platform)}">${platformLabel(v.platform)}</span>
+        <div class="vcard-actions">
+          <button class="vcard-act-btn" onclick="event.stopPropagation();toggleFav('${v.id}')">${v.fav?'⭐':'☆'}</button>
+          <button class="vcard-act-btn" onclick="event.stopPropagation();openAddModal('${v.id}')">✏️</button>
+          <button class="vcard-act-btn" onclick="event.stopPropagation();deleteVideo('${v.id}')">🗑️</button>
+        </div>
+      </div>
+      <div class="vcard-body">
+        <div class="vcard-title">${v.title||'無題'}</div>
+        ${folderName?`<div class="vcard-meta">📁 ${folderName}</div>`:''}
+        ${v.tags&&v.tags.length?`<div class="vcard-tags">${v.tags.map(t=>`<span class="vcard-tag">${t}</span>`).join('')}</div>`:''}
+        ${v.note?`<div class="vcard-note">📝 ${v.note}</div>`:''}
+      </div>`;
+    card.addEventListener('click',()=>openPlayer(v.id));
+  const embUrl=getEmbedUrl(v);
+  if(embUrl){card.dataset.emburl=embUrl;card.dataset.platform=v.platform;}
+  return card;
+}
+
+function addGroupHeader(g, label, count){
+  const h=document.createElement('div');
+  h.className='group-header';
+  h.innerHTML=`<span class="group-header-label">${label}</span><span class="group-header-line"></span><span class="group-header-count">${count}件</span>`;
+  g.appendChild(h);
+}
+
+function renderGrid(){
+  const list=getFiltered();
+  const g=document.getElementById('videoGrid');
+  document.getElementById('countLabel').textContent=`${list.length}件`;
+  g.innerHTML='';
+  if(!list.length){
+    g.innerHTML=`<div class="empty-state"><div class="empty-icon">🎞️</div><div class="empty-title">動画がありません</div><div class="empty-desc">「＋ 追加」ボタンから動画URLを登録してください</div></div>`;
+    setupObserver();return;
+  }
+  const sort=document.getElementById('sortSelect').value;
+
+  if(sort==='folder'||sort==='platform'||sort==='tag'){
+    let groups=[];
+    if(sort==='folder'){
+      const folderMap={};
+      list.forEach(v=>{
+        const key=v.folder||'__none';
+        if(!folderMap[key])folderMap[key]=[];
+        folderMap[key].push(v);
+      });
+      // named folders first, then no folder
+      folders.forEach(f=>{
+        if(folderMap[f.id])groups.push({label:'📁 '+f.name,items:folderMap[f.id]});
+      });
+      if(folderMap['__none'])groups.push({label:'フォルダなし',items:folderMap['__none']});
+    } else if(sort==='platform'){
+      const order=['yt','vm','nc','x','gd','other'];
+      const platMap={};
+      list.forEach(v=>{const k=v.platform||'other';if(!platMap[k])platMap[k]=[];platMap[k].push(v);});
+      order.forEach(p=>{if(platMap[p])groups.push({label:platformLabel(p),items:platMap[p]});});
+    } else if(sort==='tag'){
+      const tagged={};
+      const untagged=[];
+      list.forEach(v=>{
+        if(!v.tags||!v.tags.length){untagged.push(v);return;}
+        v.tags.forEach(t=>{if(!tagged[t])tagged[t]=[];tagged[t].push(v);});
+      });
+      Object.keys(tagged).sort().forEach(t=>groups.push({label:'🏷 '+t,items:tagged[t]}));
+      if(untagged.length)groups.push({label:'タグなし',items:untagged});
+    }
+    groups.forEach(group=>{
+      addGroupHeader(g, group.label, group.items.length);
+      group.items.forEach(v=>g.appendChild(makeCard(v)));
+    });
+  } else {
+    list.forEach(v=>g.appendChild(makeCard(v)));
+  }
+
+  setupObserver();
+  g.querySelectorAll('.vcard').forEach(card=>{
+    if(card.dataset.emburl)gridObserver.observe(card);
+  });
+}
+
+function renderSidebar(){
+  document.getElementById('badge-all').textContent=videos.length;
+  document.getElementById('badge-fav').textContent=videos.filter(v=>v.fav).length;
+  ['yt','vm','nc','x','gd'].forEach(p=>{
+    const el=document.getElementById('badge-'+p);
+    if(el)el.textContent=videos.filter(v=>v.platform===p).length;
+  });
+  const fl=document.getElementById('folderList');
+  fl.innerHTML='';
+  folders.forEach(f=>{
+    const el=document.createElement('div');
+    el.className='folder-item';el.dataset.id=f.id;
+    el.innerHTML=`<span class="folder-dot" style="background:${COLOR_HEX[f.color]||'#7c6fff'}"></span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</span><span style="font-size:10px;color:var(--text3)">${videos.filter(v=>v.folder===f.id).length}</span>`;
+    el.addEventListener('click',()=>setFolder(f.id));
+    fl.appendChild(el);
+  });
+  const tl=document.getElementById('tagList');
+  tl.innerHTML='';
+  [...new Set(videos.flatMap(v=>v.tags||[]))].forEach(t=>{
+    const c=document.createElement('span');
+    c.className='tag-chip'+(state.tag===t?' active':'');
+    c.textContent=t;
+    c.onclick=()=>setTagFilter(t);
+    tl.appendChild(c);
+  });
+}
+
+function renderAll(){
+  if(gridObserver){gridObserver.disconnect();gridObserver=null;}
+  renderSidebar();
+  renderGrid();
+}
+
+window.openFolderModal=function(){
+  document.getElementById('folderName').value='';
+  state.selectedColor='purple';
+  renderColorPicker();
+  document.getElementById('folderModal').classList.remove('hidden');
+}
+function renderColorPicker(){
+  const cp=document.getElementById('colorPicker');
+  cp.innerHTML='';
+  COLORS.forEach(c=>{
+    const el=document.createElement('div');
+    el.className='color-opt'+(state.selectedColor===c?' selected':'');
+    el.style.background=COLOR_HEX[c];
+    el.onclick=()=>{state.selectedColor=c;renderColorPicker()};
+    cp.appendChild(el);
+  });
+}
+window.saveFolder=async function(){
+  const name=document.getElementById('folderName').value.trim();
+  if(!name){notify('フォルダ名を入力してください');return}
+  try{
+    await addDoc(collection(db,'workspaces',currentWsId,'folders'),{name,color:state.selectedColor,createdAt:Date.now()});
+    closeModal('folderModal');notify('フォルダを作成しました');
+  }catch(e){notify('作成失敗: '+e.message)}
+}
+
+window.closeModal=function(id){
+  document.getElementById(id).classList.add('hidden');
+  if(id==='playerModal'){
+    const iframe=document.getElementById('playerIframe');
+    if(iframe)iframe.src='';
+  }
+}
+window.closeModalBg=function(e,id){if(e.target.classList.contains('modal-bg'))closeModal(id)}
+
+document.getElementById('searchInput').addEventListener('input',renderGrid);
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')['playerModal','addModal','folderModal','shareModal'].forEach(id=>{
+    if(!document.getElementById(id).classList.contains('hidden'))closeModal(id);
+  });
+});
+</script>
+</body>
+</html>
