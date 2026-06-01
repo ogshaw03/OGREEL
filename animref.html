@@ -23,15 +23,30 @@ input,textarea,select{font-family:var(--font-body);color:var(--text);background:
 input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 input::placeholder,textarea::placeholder{color:var(--text3)}
 
-/* WORKSPACE SELECT SCREEN */
-.ws-screen{position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px}
+/* LOGIN SCREEN */
+.login-screen{position:fixed;inset:0;background:var(--bg);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-screen.hidden{display:none}
+.login-box{width:100%;max-width:400px;text-align:center}
+.login-logo{font-family:var(--font-head);font-size:36px;font-weight:700;letter-spacing:4px;margin-bottom:8px}
+.login-logo span{color:var(--accent)}
+.login-sub{font-size:13px;color:var(--text3);margin-bottom:48px;line-height:1.6}
+.google-btn{display:inline-flex;align-items:center;gap:12px;padding:12px 24px;background:#fff;color:#333;border-radius:var(--radius);font-size:14px;font-weight:500;transition:all .15s;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.google-btn:hover{background:#f5f5f5;transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.google-icon{width:20px;height:20px}
+
+/* WORKSPACE SCREEN */
+.ws-screen{position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
 .ws-screen.hidden{display:none}
-.ws-box{width:100%;max-width:480px}
-.ws-logo{font-family:var(--font-head);font-size:28px;font-weight:700;letter-spacing:3px;margin-bottom:4px}
+.ws-box{width:100%;max-width:480px;padding:20px 0}
+.ws-logo{font-family:var(--font-head);font-size:24px;font-weight:700;letter-spacing:3px;margin-bottom:4px}
 .ws-logo span{color:var(--accent)}
-.ws-sub{font-size:13px;color:var(--text3);margin-bottom:32px}
-.ws-section{margin-bottom:24px}
-.ws-label{font-size:11px;font-weight:500;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px}
+.ws-user{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);margin-bottom:24px;font-size:13px}
+.ws-user img{width:28px;height:28px;border-radius:50%}
+.ws-user-name{flex:1;color:var(--text2)}
+.ws-logout{font-size:12px;color:var(--text3);padding:4px 8px;border-radius:4px}
+.ws-logout:hover{color:var(--red);background:rgba(255,90,90,.1)}
+.ws-section{margin-bottom:20px}
+.ws-label{font-size:10px;font-weight:500;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px}
 .ws-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
 .ws-item{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:border-color .15s}
 .ws-item:hover{border-color:var(--border2)}
@@ -66,6 +81,8 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .btn-ghost:hover{border-color:var(--border2);color:var(--text)}
 .btn-icon{width:32px;height:32px;border-radius:var(--radius2);display:flex;align-items:center;justify-content:center;font-size:15px}
 .btn-icon:hover{background:var(--bg4)}
+.user-avatar{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid var(--border)}
+.user-avatar:hover{border-color:var(--accent)}
 .sync-dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
 
 /* LAYOUT */
@@ -155,7 +172,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .color-picker{display:flex;gap:6px;flex-wrap:wrap}
 .color-opt{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:.1s}
 .color-opt.selected,.color-opt:hover{border-color:#fff}
-.code-display{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:10px 14px;font-size:14px;font-family:monospace;letter-spacing:2px;text-align:center;color:var(--accent);cursor:pointer;user-select:all}
+.code-display{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:10px 14px;font-size:16px;font-family:monospace;letter-spacing:3px;text-align:center;color:var(--accent);cursor:pointer;user-select:all}
 .code-display:hover{border-color:var(--accent)}
 .notification{position:fixed;bottom:24px;right:24px;background:var(--bg4);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 16px;font-size:13px;z-index:9999;animation:slideIn .2s ease;pointer-events:none}
 @keyframes slideIn{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -179,11 +196,23 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
   <div style="font-size:13px;color:var(--text3)">接続中...</div>
 </div>
 
-<!-- WORKSPACE SELECT SCREEN -->
-<div class="ws-screen" id="wsScreen">
+<!-- LOGIN SCREEN -->
+<div class="login-screen hidden" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">ANIM<span>REF</span></div>
+    <div class="login-sub">アニメーション作業用<br>動画素材管理ツール</div>
+    <button class="google-btn" onclick="loginWithGoogle()">
+      <svg class="google-icon" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Googleでログイン
+    </button>
+  </div>
+</div>
+
+<!-- WORKSPACE SCREEN -->
+<div class="ws-screen hidden" id="wsScreen">
   <div class="ws-box">
-    <div class="ws-logo">ANIM<span>REF</span></div>
-    <div class="ws-sub">ワークスペースを選択または作成してください</div>
+    <div class="ws-logo" style="margin-bottom:16px">ANIM<span>REF</span></div>
+    <div class="ws-user" id="wsUserInfo"></div>
 
     <div class="ws-section">
       <div class="ws-label">参加済みワークスペース</div>
@@ -228,8 +257,9 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
   </div>
   <div class="header-actions">
     <span class="sync-dot" title="リアルタイム同期中"></span>
-    <button class="btn btn-ghost" onclick="openShareModal()" title="招待コードを共有">🔗 共有</button>
+    <button class="btn btn-ghost" onclick="openShareModal()">🔗 共有</button>
     <button class="btn btn-primary" onclick="openAddModal()">＋ 追加</button>
+    <img id="headerAvatar" class="user-avatar" src="" onclick="showWsScreen()" title="アカウント">
   </div>
 </div>
 
@@ -371,16 +401,16 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
     </div>
     <div class="modal-body">
       <div class="form-row">
-        <label class="form-label">ワークスペース名</label>
+        <label class="form-label">ワークスペース</label>
         <div style="font-size:15px;font-weight:500;padding:4px 0" id="shareWsName"></div>
       </div>
       <div class="form-row">
         <label class="form-label">招待コード（クリックでコピー）</label>
         <div class="code-display" id="shareCode" onclick="copyCode()"></div>
       </div>
-      <div style="font-size:12px;color:var(--text3);line-height:1.7">
+      <div style="font-size:12px;color:var(--text3);line-height:1.8">
         このコードを共有したい相手に伝えてください。<br>
-        相手はワークスペース選択画面の「招待コードで参加」から入力することで同じワークスペースにアクセスできます。
+        相手は「招待コードで参加」から入力することで同じワークスペースにアクセスできます。
       </div>
     </div>
   </div>
@@ -390,8 +420,8 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc, getDoc, getDocs, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyASqL2Qp8sGrkzHz7J_HhE6QXntAZOO7RE",
@@ -405,6 +435,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
 const COLORS=['purple','blue','green','amber','red','pink','gray'];
 const COLOR_HEX={purple:'#7c6fff',blue:'#5a8fff',green:'#5affa0',amber:'#ffb85a',red:'#ff5a5a',pink:'#ff5aaa',gray:'#5a5a6a'};
@@ -412,49 +443,84 @@ const WS_COLORS=['#7c6fff','#5a8fff','#5affa0','#ffb85a','#ff5a5a','#ff5aaa'];
 
 let videos=[], folders=[];
 let state={filter:'all',folder:null,tag:null,view:'grid',editId:null,currentTags:[],selectedColor:'purple',currentPlayId:null};
-let currentUid=null;
+let currentUser=null;
 let currentWsId=null;
 let currentWsName=null;
+let currentWsCode=null;
 let unsubVideos=null, unsubFolders=null;
 
-// ── LocalStorage: 参加済みWSリスト ──
-function getMyWorkspaces(){
-  try{return JSON.parse(localStorage.getItem('animref_workspaces')||'[]')}catch(e){return[]}
-}
-function saveMyWorkspaces(list){localStorage.setItem('animref_workspaces',JSON.stringify(list))}
-function addMyWorkspace(ws){
-  const list=getMyWorkspaces();
-  if(!list.find(x=>x.id===ws.id))list.push(ws);
-  saveMyWorkspaces(list);
-}
-function removeMyWorkspace(id){
-  saveMyWorkspaces(getMyWorkspaces().filter(x=>x.id!==id));
-}
-
-// ── Auth ──
-onAuthStateChanged(auth, user=>{
+// ── Auth State ──
+onAuthStateChanged(auth, async user=>{
+  document.getElementById('loadingOverlay').classList.add('hidden');
   if(user){
-    currentUid=user.uid;
-    document.getElementById('loadingOverlay').classList.add('hidden');
-    renderWsScreen();
-    document.getElementById('wsScreen').classList.remove('hidden');
+    currentUser=user;
+    document.getElementById('headerAvatar').src=user.photoURL||'';
+    document.getElementById('loginScreen').classList.add('hidden');
+    await loadAndShowWsScreen();
+  } else {
+    currentUser=null;
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('wsScreen').classList.add('hidden');
   }
 });
-signInAnonymously(auth).catch(e=>notify('接続エラー: '+e.message));
+
+window.loginWithGoogle=async function(){
+  try{
+    await signInWithPopup(auth, provider);
+  }catch(e){
+    notify('ログイン失敗: '+e.message);
+  }
+}
+
+window.logoutUser=async function(){
+  if(!confirm('ログアウトしますか？'))return;
+  if(unsubVideos)unsubVideos();
+  if(unsubFolders)unsubFolders();
+  await signOut(auth);
+}
+
+// ── Workspace list stored in Firestore per user ──
+// Path: users/{uid}/workspaces/{wsId} -> {name, code, joinedAt}
+async function getUserWorkspaces(){
+  if(!currentUser)return[];
+  const snap=await getDocs(collection(db,'users',currentUser.uid,'workspaces'));
+  return snap.docs.map(d=>({id:d.id,...d.data()}));
+}
+async function addUserWorkspace(ws){
+  if(!currentUser)return;
+  await setDoc(doc(db,'users',currentUser.uid,'workspaces',ws.id),{name:ws.name,code:ws.code,joinedAt:Date.now()});
+}
+async function removeUserWorkspace(wsId){
+  if(!currentUser)return;
+  await deleteDoc(doc(db,'users',currentUser.uid,'workspaces',wsId));
+}
 
 // ── Workspace Screen ──
-window.showWsScreen=function(){
-  if(unsubVideos){unsubVideos();unsubVideos=null}
-  if(unsubFolders){unsubFolders();unsubFolders=null}
-  renderWsScreen();
+async function loadAndShowWsScreen(){
+  renderWsUserInfo();
+  const list=await getUserWorkspaces();
+  renderWsList(list);
   document.getElementById('wsScreen').classList.remove('hidden');
 }
 
-function renderWsScreen(){
-  const list=getMyWorkspaces();
+window.showWsScreen=async function(){
+  if(unsubVideos){unsubVideos();unsubVideos=null}
+  if(unsubFolders){unsubFolders();unsubFolders=null}
+  await loadAndShowWsScreen();
+}
+
+function renderWsUserInfo(){
+  const u=currentUser;
+  document.getElementById('wsUserInfo').innerHTML=`
+    <img src="${u.photoURL||''}" onerror="this.style.display='none'">
+    <span class="ws-user-name">${u.displayName||u.email||'ユーザー'}</span>
+    <button class="ws-logout" onclick="logoutUser()">ログアウト</button>`;
+}
+
+function renderWsList(list){
   const el=document.getElementById('myWsList');
   if(!list.length){
-    el.innerHTML=`<div class="ws-empty">まだワークスペースがありません</div>`;
+    el.innerHTML=`<div class="ws-empty">まだワークスペースがありません<br>下から作成または参加してください</div>`;
     return;
   }
   el.innerHTML='';
@@ -466,7 +532,7 @@ function renderWsScreen(){
       <span class="ws-item-dot" style="background:${color}"></span>
       <div class="ws-item-info">
         <div class="ws-item-name">${ws.name}</div>
-        <div class="ws-item-code">コード: ${ws.code}</div>
+        <div class="ws-item-code">招待コード: ${ws.code}</div>
       </div>
       <button class="ws-item-del" onclick="event.stopPropagation();leaveWorkspace('${ws.id}')" title="リストから削除">✕</button>`;
     item.addEventListener('click',()=>enterWorkspace(ws.id, ws.name, ws.code, color));
@@ -479,40 +545,42 @@ window.createWorkspace=async function(){
   if(!name){notify('名前を入力してください');return}
   const code='ANIM-'+Math.random().toString(36).slice(2,6).toUpperCase();
   const wsRef=doc(collection(db,'workspaces'));
-  await setDoc(wsRef,{name,code,createdAt:Date.now(),createdBy:currentUid});
+  await setDoc(wsRef,{name,code,createdAt:Date.now(),createdBy:currentUser.uid});
   const ws={id:wsRef.id,name,code};
-  addMyWorkspace(ws);
+  await addUserWorkspace(ws);
   document.getElementById('wsNewName').value='';
-  const color=WS_COLORS[getMyWorkspaces().length%WS_COLORS.length];
   notify('ワークスペースを作成しました');
+  const list=await getUserWorkspaces();
+  const color=WS_COLORS[(list.length-1)%WS_COLORS.length];
   enterWorkspace(wsRef.id, name, code, color);
 }
 
 window.joinWorkspace=async function(){
   const code=document.getElementById('wsJoinCode').value.trim().toUpperCase();
   if(!code){notify('コードを入力してください');return}
-  // Search by code
-  const {getDocs, where}=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
   const q=query(collection(db,'workspaces'),where('code','==',code));
   const snap=await getDocs(q);
   if(snap.empty){notify('コードが見つかりません');return}
   const wsDoc=snap.docs[0];
   const ws={id:wsDoc.id,name:wsDoc.data().name,code};
-  addMyWorkspace(ws);
+  await addUserWorkspace(ws);
   document.getElementById('wsJoinCode').value='';
   notify(`「${ws.name}」に参加しました`);
-  const color=WS_COLORS[getMyWorkspaces().length%WS_COLORS.length];
+  const list=await getUserWorkspaces();
+  const color=WS_COLORS[(list.length-1)%WS_COLORS.length];
   enterWorkspace(ws.id, ws.name, code, color);
 }
 
-window.leaveWorkspace=function(id){
+window.leaveWorkspace=async function(id){
   if(!confirm('リストから削除しますか？（データは消えません）'))return;
-  removeMyWorkspace(id);
-  renderWsScreen();
+  await removeUserWorkspace(id);
+  const list=await getUserWorkspaces();
+  renderWsList(list);
+  notify('ワークスペースをリストから削除しました');
 }
 
 function enterWorkspace(id, name, code, color){
-  currentWsId=id; currentWsName=name;
+  currentWsId=id; currentWsName=name; currentWsCode=code;
   document.getElementById('wsScreen').classList.add('hidden');
   document.getElementById('wsSwitcherName').textContent=name;
   document.getElementById('wsSwitcherDot').style.background=color||'#7c6fff';
@@ -533,12 +601,11 @@ function startListeners(){
   );
 }
 
-// ── Share Modal ──
+// ── Share ──
 window.openShareModal=function(){
   if(!currentWsId){notify('ワークスペースを選択してください');return}
-  const ws=getMyWorkspaces().find(x=>x.id===currentWsId);
   document.getElementById('shareWsName').textContent=currentWsName;
-  document.getElementById('shareCode').textContent=ws?ws.code:'不明';
+  document.getElementById('shareCode').textContent=currentWsCode||'';
   document.getElementById('shareModal').classList.remove('hidden');
 }
 window.copyCode=function(){
@@ -567,7 +634,6 @@ function getThumb(v){
 function platformLabel(p){return{yt:'YouTube',vm:'Vimeo',nc:'ニコニコ',x:'X'}[p]||'OTHER'}
 function platformClass(p){return'badge-'+(p||'yt')}
 
-// ── Parse URL ──
 window.parseUrl=async function(){
   const url=document.getElementById('videoUrl').value.trim();
   if(!url)return;
@@ -641,7 +707,7 @@ window.saveVideo=async function(){
   const folder=document.getElementById('videoFolder').value;
   const note=document.getElementById('videoNote').value.trim();
   const thumb=p==='vm'?document.getElementById('videoUrl').dataset.vimeoThumb||'':'';
-  const data={url,vid:vid||null,platform:p,title,tags:state.currentTags,folder,note,thumb,fav:false,createdAt:Date.now(),addedBy:currentUid};
+  const data={url,vid:vid||null,platform:p,title,tags:state.currentTags,folder,note,thumb,fav:false,createdAt:Date.now(),addedBy:currentUser.uid,addedByName:currentUser.displayName||''};
   try{
     if(state.editId){
       const existing=videos.find(x=>x.id===state.editId);
@@ -673,7 +739,8 @@ window.openPlayer=function(id){
   const folder=v.folder?folders.find(f=>f.id===v.folder):null;
   document.getElementById('playerMeta').innerHTML=
     `<span class="vcard-badge ${platformClass(v.platform)}" style="position:static">${platformLabel(v.platform)}</span>`+
-    (folder?`<span>📁 ${folder.name}</span>`:'');
+    (folder?`<span>📁 ${folder.name}</span>`:'')+
+    (v.addedByName?`<span>👤 ${v.addedByName}</span>`:'');
   const ni=document.getElementById('playerNote');
   if(v.note){ni.textContent=v.note;ni.style.display='block'}else{ni.style.display='none'}
   document.getElementById('playerTags').innerHTML=(v.tags||[]).map(t=>`<span class="vcard-tag">${t}</span>`).join('');
