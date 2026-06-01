@@ -22,10 +22,40 @@ button{cursor:pointer;border:none;background:none;color:inherit;font-family:inhe
 input,textarea,select{font-family:var(--font-body);color:var(--text);background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:8px 12px;outline:none;font-size:13px}
 input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 input::placeholder,textarea::placeholder{color:var(--text3)}
-.header{display:flex;align-items:center;gap:16px;padding:0 16px;height:52px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;z-index:100}
+
+/* WORKSPACE SELECT SCREEN */
+.ws-screen{position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px}
+.ws-screen.hidden{display:none}
+.ws-box{width:100%;max-width:480px}
+.ws-logo{font-family:var(--font-head);font-size:28px;font-weight:700;letter-spacing:3px;margin-bottom:4px}
+.ws-logo span{color:var(--accent)}
+.ws-sub{font-size:13px;color:var(--text3);margin-bottom:32px}
+.ws-section{margin-bottom:24px}
+.ws-label{font-size:11px;font-weight:500;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px}
+.ws-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.ws-item{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:border-color .15s}
+.ws-item:hover{border-color:var(--border2)}
+.ws-item-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.ws-item-info{flex:1}
+.ws-item-name{font-size:14px;font-weight:500}
+.ws-item-code{font-size:11px;color:var(--text3);margin-top:2px}
+.ws-item-del{font-size:12px;color:var(--text3);padding:4px 8px;border-radius:4px}
+.ws-item-del:hover{color:var(--red);background:rgba(255,90,90,.1)}
+.ws-divider{border:none;border-top:1px solid var(--border);margin:20px 0}
+.ws-form{display:flex;flex-direction:column;gap:10px}
+.ws-form input{width:100%}
+.ws-form-row{display:flex;gap:8px}
+.ws-form-row input{flex:1}
+.ws-empty{font-size:13px;color:var(--text3);padding:16px;text-align:center;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)}
+
+/* HEADER */
+.header{display:flex;align-items:center;gap:12px;padding:0 16px;height:52px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;z-index:100}
 .logo{font-family:var(--font-head);font-size:18px;font-weight:700;color:var(--text);letter-spacing:2px}
 .logo span{color:var(--accent)}
-.search-wrap{flex:1;max-width:400px;position:relative}
+.ws-switcher{display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);cursor:pointer;font-size:12px;color:var(--text2);transition:all .15s}
+.ws-switcher:hover{border-color:var(--border2);color:var(--text)}
+.ws-switcher-dot{width:7px;height:7px;border-radius:50%}
+.search-wrap{flex:1;max-width:360px;position:relative}
 .search-wrap input{width:100%;padding-left:32px;background:var(--bg3)}
 .search-wrap .si{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px}
 .header-actions{display:flex;gap:8px;margin-left:auto;align-items:center}
@@ -36,6 +66,9 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .btn-ghost:hover{border-color:var(--border2);color:var(--text)}
 .btn-icon{width:32px;height:32px;border-radius:var(--radius2);display:flex;align-items:center;justify-content:center;font-size:15px}
 .btn-icon:hover{background:var(--bg4)}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+
+/* LAYOUT */
 .app-body{display:flex;flex:1;overflow:hidden}
 .sidebar{width:220px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;padding:12px 8px}
 .sidebar-section{margin-bottom:20px}
@@ -66,10 +99,12 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .grid-wrap{flex:1;overflow-y:auto;padding:16px}
 .video-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
 .video-grid.list-view{grid-template-columns:1fr}
+
+/* CARDS */
 .vcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:border-color .15s;position:relative}
 .vcard:hover{border-color:var(--border2)}
 .vcard-thumb-wrap{position:relative;padding-bottom:56.25%;background:#111;overflow:hidden}
-.vcard-thumb-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity .3s}
+.vcard-thumb-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .vcard-thumb-no-img{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:32px}
 .vcard-thumb-wrap .player-container{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .vcard-thumb-wrap .player-container iframe{width:100%;height:100%;border:none}
@@ -91,6 +126,8 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .video-grid.list-view .vcard{display:flex;flex-direction:row}
 .video-grid.list-view .vcard-thumb-wrap{width:180px;flex-shrink:0;padding-bottom:0;height:101px}
 .video-grid.list-view .vcard-body{flex:1;display:flex;flex-direction:column;justify-content:center}
+
+/* MODALS */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:20px}
 .modal-bg.hidden{display:none}
 .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.6)}
@@ -118,6 +155,8 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .color-picker{display:flex;gap:6px;flex-wrap:wrap}
 .color-opt{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:.1s}
 .color-opt.selected,.color-opt:hover{border-color:#fff}
+.code-display{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:10px 14px;font-size:14px;font-family:monospace;letter-spacing:2px;text-align:center;color:var(--accent);cursor:pointer;user-select:all}
+.code-display:hover{border-color:var(--accent)}
 .notification{position:fixed;bottom:24px;right:24px;background:var(--bg4);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 16px;font-size:13px;z-index:9999;animation:slideIn .2s ease;pointer-events:none}
 @keyframes slideIn{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
 .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:300px;color:var(--text3);padding:60px;grid-column:1/-1}
@@ -128,8 +167,6 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .loading-overlay.hidden{display:none}
 .spinner{width:32px;height:32px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:6px}
-.user-badge{background:var(--bg4);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:12px;color:var(--text2)}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
@@ -142,15 +179,56 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
   <div style="font-size:13px;color:var(--text3)">接続中...</div>
 </div>
 
+<!-- WORKSPACE SELECT SCREEN -->
+<div class="ws-screen" id="wsScreen">
+  <div class="ws-box">
+    <div class="ws-logo">ANIM<span>REF</span></div>
+    <div class="ws-sub">ワークスペースを選択または作成してください</div>
+
+    <div class="ws-section">
+      <div class="ws-label">参加済みワークスペース</div>
+      <div id="myWsList" class="ws-list"></div>
+    </div>
+
+    <hr class="ws-divider">
+
+    <div class="ws-section">
+      <div class="ws-label">新しく作成</div>
+      <div class="ws-form">
+        <input type="text" id="wsNewName" placeholder="ワークスペース名（例：Aさん用）">
+        <button class="btn btn-primary" onclick="createWorkspace()" style="align-self:flex-start">作成</button>
+      </div>
+    </div>
+
+    <hr class="ws-divider">
+
+    <div class="ws-section">
+      <div class="ws-label">招待コードで参加</div>
+      <div class="ws-form">
+        <div class="ws-form-row">
+          <input type="text" id="wsJoinCode" placeholder="コードを入力（例：ANIM-XXXX）" style="text-transform:uppercase">
+          <button class="btn btn-ghost" onclick="joinWorkspace()">参加</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
 <div class="header">
   <div class="logo">ANIM<span>REF</span></div>
+  <button class="ws-switcher" onclick="showWsScreen()" id="wsSwitcher">
+    <span class="ws-switcher-dot" id="wsSwitcherDot"></span>
+    <span id="wsSwitcherName">-</span>
+    <span style="color:var(--text3)">▾</span>
+  </button>
   <div class="search-wrap">
     <span class="si">🔍</span>
     <input type="text" id="searchInput" placeholder="タイトル・タグで検索...">
   </div>
   <div class="header-actions">
-    <span class="sync-dot" id="syncDot" title="リアルタイム同期中"></span>
-    <span class="user-badge" id="userBadge">-</span>
+    <span class="sync-dot" title="リアルタイム同期中"></span>
+    <button class="btn btn-ghost" onclick="openShareModal()" title="招待コードを共有">🔗 共有</button>
     <button class="btn btn-primary" onclick="openAddModal()">＋ 追加</button>
   </div>
 </div>
@@ -179,7 +257,6 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
       <div id="tagList" style="padding:2px 4px"></div>
     </div>
   </div>
-
   <div class="main">
     <div class="toolbar">
       <div class="toolbar-left">
@@ -191,8 +268,8 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
         </select>
       </div>
       <div class="view-toggle">
-        <button class="view-btn active" id="gridViewBtn" onclick="setView('grid')" title="グリッド">⊞</button>
-        <button class="view-btn" id="listViewBtn" onclick="setView('list')" title="リスト">≡</button>
+        <button class="view-btn active" id="gridViewBtn" onclick="setView('grid')">⊞</button>
+        <button class="view-btn" id="listViewBtn" onclick="setView('list')">≡</button>
       </div>
     </div>
     <div class="grid-wrap"><div class="video-grid" id="videoGrid"></div></div>
@@ -255,7 +332,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
       <div class="player-note" id="playerNote" style="display:none"></div>
       <div class="player-tags" id="playerTags"></div>
       <div style="margin-top:14px">
-        <button class="btn btn-primary" id="openUrlBtn" style="width:100%;justify-content:center" onclick="openCurrentUrl()">▶ 動画を開く（新しいタブ）</button>
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="openCurrentUrl()">▶ 動画を開く（新しいタブ）</button>
       </div>
     </div>
   </div>
@@ -285,12 +362,35 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
   </div>
 </div>
 
+<!-- SHARE MODAL -->
+<div class="modal-bg hidden" id="shareModal" onclick="closeModalBg(event,'shareModal')">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title">招待コードを共有</div>
+      <button class="btn-icon" onclick="closeModal('shareModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label class="form-label">ワークスペース名</label>
+        <div style="font-size:15px;font-weight:500;padding:4px 0" id="shareWsName"></div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">招待コード（クリックでコピー）</label>
+        <div class="code-display" id="shareCode" onclick="copyCode()"></div>
+      </div>
+      <div style="font-size:12px;color:var(--text3);line-height:1.7">
+        このコードを共有したい相手に伝えてください。<br>
+        相手はワークスペース選択画面の「招待コードで参加」から入力することで同じワークスペースにアクセスできます。
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="notification" style="display:none" class="notification"></div>
 
-<!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
@@ -308,33 +408,142 @@ const auth = getAuth(app);
 
 const COLORS=['purple','blue','green','amber','red','pink','gray'];
 const COLOR_HEX={purple:'#7c6fff',blue:'#5a8fff',green:'#5affa0',amber:'#ffb85a',red:'#ff5a5a',pink:'#ff5aaa',gray:'#5a5a6a'};
+const WS_COLORS=['#7c6fff','#5a8fff','#5affa0','#ffb85a','#ff5a5a','#ff5aaa'];
 
 let videos=[], folders=[];
 let state={filter:'all',folder:null,tag:null,view:'grid',editId:null,currentTags:[],selectedColor:'purple',currentPlayId:null};
 let currentUid=null;
+let currentWsId=null;
+let currentWsName=null;
+let unsubVideos=null, unsubFolders=null;
+
+// ── LocalStorage: 参加済みWSリスト ──
+function getMyWorkspaces(){
+  try{return JSON.parse(localStorage.getItem('animref_workspaces')||'[]')}catch(e){return[]}
+}
+function saveMyWorkspaces(list){localStorage.setItem('animref_workspaces',JSON.stringify(list))}
+function addMyWorkspace(ws){
+  const list=getMyWorkspaces();
+  if(!list.find(x=>x.id===ws.id))list.push(ws);
+  saveMyWorkspaces(list);
+}
+function removeMyWorkspace(id){
+  saveMyWorkspaces(getMyWorkspaces().filter(x=>x.id!==id));
+}
 
 // ── Auth ──
-onAuthStateChanged(auth, user => {
+onAuthStateChanged(auth, user=>{
   if(user){
     currentUid=user.uid;
-    const shortId=user.uid.slice(0,6);
-    document.getElementById('userBadge').textContent='ID: '+shortId;
-    startListeners();
     document.getElementById('loadingOverlay').classList.add('hidden');
+    renderWsScreen();
+    document.getElementById('wsScreen').classList.remove('hidden');
   }
 });
-signInAnonymously(auth).catch(e=>{ notify('接続エラー: '+e.message); });
+signInAnonymously(auth).catch(e=>notify('接続エラー: '+e.message));
+
+// ── Workspace Screen ──
+window.showWsScreen=function(){
+  if(unsubVideos){unsubVideos();unsubVideos=null}
+  if(unsubFolders){unsubFolders();unsubFolders=null}
+  renderWsScreen();
+  document.getElementById('wsScreen').classList.remove('hidden');
+}
+
+function renderWsScreen(){
+  const list=getMyWorkspaces();
+  const el=document.getElementById('myWsList');
+  if(!list.length){
+    el.innerHTML=`<div class="ws-empty">まだワークスペースがありません</div>`;
+    return;
+  }
+  el.innerHTML='';
+  list.forEach((ws,i)=>{
+    const color=WS_COLORS[i%WS_COLORS.length];
+    const item=document.createElement('div');
+    item.className='ws-item';
+    item.innerHTML=`
+      <span class="ws-item-dot" style="background:${color}"></span>
+      <div class="ws-item-info">
+        <div class="ws-item-name">${ws.name}</div>
+        <div class="ws-item-code">コード: ${ws.code}</div>
+      </div>
+      <button class="ws-item-del" onclick="event.stopPropagation();leaveWorkspace('${ws.id}')" title="リストから削除">✕</button>`;
+    item.addEventListener('click',()=>enterWorkspace(ws.id, ws.name, ws.code, color));
+    el.appendChild(item);
+  });
+}
+
+window.createWorkspace=async function(){
+  const name=document.getElementById('wsNewName').value.trim();
+  if(!name){notify('名前を入力してください');return}
+  const code='ANIM-'+Math.random().toString(36).slice(2,6).toUpperCase();
+  const wsRef=doc(collection(db,'workspaces'));
+  await setDoc(wsRef,{name,code,createdAt:Date.now(),createdBy:currentUid});
+  const ws={id:wsRef.id,name,code};
+  addMyWorkspace(ws);
+  document.getElementById('wsNewName').value='';
+  const color=WS_COLORS[getMyWorkspaces().length%WS_COLORS.length];
+  notify('ワークスペースを作成しました');
+  enterWorkspace(wsRef.id, name, code, color);
+}
+
+window.joinWorkspace=async function(){
+  const code=document.getElementById('wsJoinCode').value.trim().toUpperCase();
+  if(!code){notify('コードを入力してください');return}
+  // Search by code
+  const {getDocs, where}=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+  const q=query(collection(db,'workspaces'),where('code','==',code));
+  const snap=await getDocs(q);
+  if(snap.empty){notify('コードが見つかりません');return}
+  const wsDoc=snap.docs[0];
+  const ws={id:wsDoc.id,name:wsDoc.data().name,code};
+  addMyWorkspace(ws);
+  document.getElementById('wsJoinCode').value='';
+  notify(`「${ws.name}」に参加しました`);
+  const color=WS_COLORS[getMyWorkspaces().length%WS_COLORS.length];
+  enterWorkspace(ws.id, ws.name, code, color);
+}
+
+window.leaveWorkspace=function(id){
+  if(!confirm('リストから削除しますか？（データは消えません）'))return;
+  removeMyWorkspace(id);
+  renderWsScreen();
+}
+
+function enterWorkspace(id, name, code, color){
+  currentWsId=id; currentWsName=name;
+  document.getElementById('wsScreen').classList.add('hidden');
+  document.getElementById('wsSwitcherName').textContent=name;
+  document.getElementById('wsSwitcherDot').style.background=color||'#7c6fff';
+  startListeners();
+}
 
 // ── Realtime Listeners ──
 function startListeners(){
-  onSnapshot(query(collection(db,'videos'),orderBy('createdAt','desc')), snap=>{
-    videos=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderAll();
-  });
-  onSnapshot(collection(db,'folders'), snap=>{
-    folders=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderAll();
-  });
+  if(unsubVideos)unsubVideos();
+  if(unsubFolders)unsubFolders();
+  unsubVideos=onSnapshot(
+    query(collection(db,'workspaces',currentWsId,'videos'),orderBy('createdAt','desc')),
+    snap=>{videos=snap.docs.map(d=>({id:d.id,...d.data()}));renderAll();}
+  );
+  unsubFolders=onSnapshot(
+    collection(db,'workspaces',currentWsId,'folders'),
+    snap=>{folders=snap.docs.map(d=>({id:d.id,...d.data()}));renderAll();}
+  );
+}
+
+// ── Share Modal ──
+window.openShareModal=function(){
+  if(!currentWsId){notify('ワークスペースを選択してください');return}
+  const ws=getMyWorkspaces().find(x=>x.id===currentWsId);
+  document.getElementById('shareWsName').textContent=currentWsName;
+  document.getElementById('shareCode').textContent=ws?ws.code:'不明';
+  document.getElementById('shareModal').classList.remove('hidden');
+}
+window.copyCode=function(){
+  const code=document.getElementById('shareCode').textContent;
+  navigator.clipboard.writeText(code).then(()=>notify('コードをコピーしました'));
 }
 
 // ── Helpers ──
@@ -377,9 +586,9 @@ window.parseUrl=async function(){
   notify('URL解析完了');
 }
 
-// ── Add Modal ──
 window.openAddModal=function(id=null){
-  state.editId=id; state.currentTags=[];
+  if(!currentWsId){notify('ワークスペースを選択してください');return}
+  state.editId=id;state.currentTags=[];
   const v=id?videos.find(x=>x.id===id):null;
   document.getElementById('modalTitle').textContent=v?'動画を編集':'動画を追加';
   document.getElementById('videoUrl').value=v?v.url:'';
@@ -396,7 +605,7 @@ function populateFolderSelect(sel=''){
   s.innerHTML='<option value="">なし</option>';
   folders.forEach(f=>{
     const o=document.createElement('option');
-    o.value=f.id; o.textContent=f.name;
+    o.value=f.id;o.textContent=f.name;
     if(f.id===sel)o.selected=true;
     s.appendChild(o);
   });
@@ -410,7 +619,6 @@ window.handleTagInput=function(e){
     e.target.value='';
   }
 }
-
 function renderTagPills(){
   const wrap=document.getElementById('tagsInputWrap');
   wrap.querySelectorAll('.tag-pill').forEach(x=>x.remove());
@@ -424,7 +632,6 @@ function renderTagPills(){
 }
 window.removeTag=function(t){state.currentTags=state.currentTags.filter(x=>x!==t);renderTagPills()}
 
-// ── Save Video ──
 window.saveVideo=async function(){
   const url=document.getElementById('videoUrl').value.trim();
   if(!url){notify('URLを入力してください');return}
@@ -438,29 +645,27 @@ window.saveVideo=async function(){
   try{
     if(state.editId){
       const existing=videos.find(x=>x.id===state.editId);
-      await updateDoc(doc(db,'videos',state.editId),{...data,fav:existing?existing.fav:false,addedBy:existing?existing.addedBy:currentUid});
+      await updateDoc(doc(db,'workspaces',currentWsId,'videos',state.editId),{...data,fav:existing?existing.fav:false});
     }else{
-      await addDoc(collection(db,'videos'),data);
+      await addDoc(collection(db,'workspaces',currentWsId,'videos'),data);
     }
     closeModal('addModal');notify('保存しました');
   }catch(e){notify('保存失敗: '+e.message)}
 }
 
-// ── Delete / Fav ──
 window.deleteVideo=async function(id){
   if(!confirm('削除しますか？'))return;
-  try{await deleteDoc(doc(db,'videos',id));notify('削除しました')}
+  try{await deleteDoc(doc(db,'workspaces',currentWsId,'videos',id));notify('削除しました')}
   catch(e){notify('削除失敗')}
 }
 window.toggleFav=async function(id){
   const v=videos.find(x=>x.id===id);if(!v)return;
   try{
-    await updateDoc(doc(db,'videos',id),{fav:!v.fav});
+    await updateDoc(doc(db,'workspaces',currentWsId,'videos',id),{fav:!v.fav});
     notify(!v.fav?'お気に入りに追加':'お気に入りから削除');
   }catch(e){notify('更新失敗')}
 }
 
-// ── Player ──
 window.openPlayer=function(id){
   const v=videos.find(x=>x.id===id);if(!v)return;
   state.currentPlayId=id;
@@ -471,7 +676,7 @@ window.openPlayer=function(id){
     (folder?`<span>📁 ${folder.name}</span>`:'');
   const ni=document.getElementById('playerNote');
   if(v.note){ni.textContent=v.note;ni.style.display='block'}else{ni.style.display='none'}
-  document.getElementById('playerTags').innerHTML=v.tags.map(t=>`<span class="vcard-tag">${t}</span>`).join('');
+  document.getElementById('playerTags').innerHTML=(v.tags||[]).map(t=>`<span class="vcard-tag">${t}</span>`).join('');
   document.getElementById('playerModal').classList.remove('hidden');
 }
 window.openCurrentUrl=function(){
@@ -480,7 +685,6 @@ window.openCurrentUrl=function(){
 }
 window.editCurrent=function(){closeModal('playerModal');openAddModal(state.currentPlayId)}
 
-// ── Filter / View ──
 window.setFilter=function(f,el){
   state.filter=f;state.folder=null;state.tag=null;
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
@@ -510,7 +714,7 @@ function getFiltered(){
   const q=document.getElementById('searchInput').value.toLowerCase();
   return videos.filter(v=>{
     if(state.folder&&v.folder!==state.folder)return false;
-    if(state.tag&&!v.tags.includes(state.tag))return false;
+    if(state.tag&&!(v.tags||[]).includes(state.tag))return false;
     if(state.filter==='fav'&&!v.fav)return false;
     if(['yt','vm','nc','x'].includes(state.filter)&&v.platform!==state.filter)return false;
     if(q&&!v.title.toLowerCase().includes(q)&&!(v.tags||[]).join(' ').toLowerCase().includes(q))return false;
@@ -523,7 +727,6 @@ function getFiltered(){
   });
 }
 
-// ── Render Grid ──
 let gridObserver=null;
 function getEmbedUrl(v){
   if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&loop=1&playlist=${v.vid}`;
@@ -533,21 +736,20 @@ function getEmbedUrl(v){
 }
 function setupObserver(){
   if(gridObserver)gridObserver.disconnect();
-  gridObserver=new IntersectionObserver((entries)=>{
+  gridObserver=new IntersectionObserver(entries=>{
     entries.forEach(entry=>{
       const pc=entry.target.querySelector('.player-container');
       const embUrl=entry.target.dataset.emburl;
       if(!pc||!embUrl)return;
       if(entry.isIntersecting){
-        if(!pc.querySelector('iframe')){
-          pc.innerHTML=`<iframe src="${embUrl}" allowfullscreen allow="autoplay"></iframe>`;
-        }
+        if(!pc.querySelector('iframe'))pc.innerHTML=`<iframe src="${embUrl}" allowfullscreen allow="autoplay"></iframe>`;
       }else{
         pc.innerHTML='';
       }
     });
   },{threshold:0.1});
 }
+
 function renderGrid(){
   const list=getFiltered();
   const g=document.getElementById('videoGrid');
@@ -568,9 +770,9 @@ function renderGrid(){
         <div class="player-container" id="pc-${v.id}"></div>
         <span class="vcard-badge ${platformClass(v.platform)}">${platformLabel(v.platform)}</span>
         <div class="vcard-actions">
-          <button class="vcard-act-btn" onclick="event.stopPropagation();toggleFav('${v.id}')" title="${v.fav?'お気に入り解除':'お気に入り'}">${v.fav?'⭐':'☆'}</button>
-          <button class="vcard-act-btn" onclick="event.stopPropagation();openAddModal('${v.id}')" title="編集">✏️</button>
-          <button class="vcard-act-btn" onclick="event.stopPropagation();deleteVideo('${v.id}')" title="削除">🗑️</button>
+          <button class="vcard-act-btn" onclick="event.stopPropagation();toggleFav('${v.id}')">${v.fav?'⭐':'☆'}</button>
+          <button class="vcard-act-btn" onclick="event.stopPropagation();openAddModal('${v.id}')">✏️</button>
+          <button class="vcard-act-btn" onclick="event.stopPropagation();deleteVideo('${v.id}')">🗑️</button>
         </div>
       </div>
       <div class="vcard-body">
@@ -590,24 +792,22 @@ function renderGrid(){
   });
 }
 
-// ── Render Sidebar ──
 function renderSidebar(){
   document.getElementById('badge-all').textContent=videos.length;
   document.getElementById('badge-fav').textContent=videos.filter(v=>v.fav).length;
-  ['yt','vm','nc','x'].forEach(p=>{ document.getElementById('badge-'+p).textContent=videos.filter(v=>v.platform===p).length });
+  ['yt','vm','nc','x'].forEach(p=>{document.getElementById('badge-'+p).textContent=videos.filter(v=>v.platform===p).length});
   const fl=document.getElementById('folderList');
   fl.innerHTML='';
   folders.forEach(f=>{
     const el=document.createElement('div');
-    el.className='folder-item'; el.dataset.id=f.id;
+    el.className='folder-item';el.dataset.id=f.id;
     el.innerHTML=`<span class="folder-dot" style="background:${COLOR_HEX[f.color]||'#7c6fff'}"></span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</span><span style="font-size:10px;color:var(--text3)">${videos.filter(v=>v.folder===f.id).length}</span>`;
     el.addEventListener('click',()=>setFolder(f.id));
     fl.appendChild(el);
   });
   const tl=document.getElementById('tagList');
   tl.innerHTML='';
-  const allTags=[...new Set(videos.flatMap(v=>v.tags||[]))];
-  allTags.forEach(t=>{
+  [...new Set(videos.flatMap(v=>v.tags||[]))].forEach(t=>{
     const c=document.createElement('span');
     c.className='tag-chip'+(state.tag===t?' active':'');
     c.textContent=t;
@@ -618,7 +818,6 @@ function renderSidebar(){
 
 function renderAll(){renderSidebar();renderGrid()}
 
-// ── Folder ──
 window.openFolderModal=function(){
   document.getElementById('folderName').value='';
   state.selectedColor='purple';
@@ -640,18 +839,17 @@ window.saveFolder=async function(){
   const name=document.getElementById('folderName').value.trim();
   if(!name){notify('フォルダ名を入力してください');return}
   try{
-    await addDoc(collection(db,'folders'),{name,color:state.selectedColor,createdAt:Date.now()});
+    await addDoc(collection(db,'workspaces',currentWsId,'folders'),{name,color:state.selectedColor,createdAt:Date.now()});
     closeModal('folderModal');notify('フォルダを作成しました');
   }catch(e){notify('作成失敗: '+e.message)}
 }
 
-// ── Modal ──
 window.closeModal=function(id){document.getElementById(id).classList.add('hidden')}
 window.closeModalBg=function(e,id){if(e.target.classList.contains('modal-bg'))closeModal(id)}
 
 document.getElementById('searchInput').addEventListener('input',renderGrid);
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape')['playerModal','addModal','folderModal'].forEach(id=>{
+  if(e.key==='Escape')['playerModal','addModal','folderModal','shareModal'].forEach(id=>{
     if(!document.getElementById(id).classList.contains('hidden'))closeModal(id);
   });
 });
