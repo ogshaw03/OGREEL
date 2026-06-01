@@ -71,8 +71,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .vcard-thumb-wrap{position:relative;padding-bottom:56.25%;background:#111;overflow:hidden}
 .vcard-thumb-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity .3s}
 .vcard-thumb-no-img{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:32px}
-.vcard-thumb-wrap .player-container{position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity .3s;pointer-events:none}
-.vcard:hover .player-container{opacity:1}
+.vcard-thumb-wrap .player-container{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .vcard-thumb-wrap .player-container iframe{width:100%;height:100%;border:none}
 .vcard-badge{position:absolute;top:8px;left:8px;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:500;letter-spacing:.5px;z-index:2}
 .badge-yt{background:#ff0000;color:#fff}
@@ -525,12 +524,29 @@ function getFiltered(){
 }
 
 // ── Render Grid ──
-const hoverTimers={};
+let gridObserver=null;
 function getEmbedUrl(v){
   if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&loop=1&playlist=${v.vid}`;
   if(v.platform==='vm'&&v.vid)return`https://player.vimeo.com/video/${v.vid}?autoplay=1&muted=1&controls=0&loop=1`;
   if(v.platform==='nc'&&v.vid)return`https://embed.nicovideo.jp/watch/${v.vid}?autoplay=1&muted=1`;
   return null;
+}
+function setupObserver(){
+  if(gridObserver)gridObserver.disconnect();
+  gridObserver=new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      const pc=entry.target.querySelector('.player-container');
+      const embUrl=entry.target.dataset.emburl;
+      if(!pc||!embUrl)return;
+      if(entry.isIntersecting){
+        if(!pc.querySelector('iframe')){
+          pc.innerHTML=`<iframe src="${embUrl}" allowfullscreen allow="autoplay"></iframe>`;
+        }
+      }else{
+        pc.innerHTML='';
+      }
+    });
+  },{threshold:0.1});
 }
 function renderGrid(){
   const list=getFiltered();
@@ -565,22 +581,12 @@ function renderGrid(){
       </div>`;
     card.addEventListener('click',()=>openPlayer(v.id));
     const embUrl=getEmbedUrl(v);
-    if(embUrl){
-      card.addEventListener('mouseenter',()=>{
-        hoverTimers[v.id]=setTimeout(()=>{
-          const pc=document.getElementById('pc-'+v.id);
-          if(pc&&!pc.querySelector('iframe')){
-            pc.innerHTML=`<iframe src="${embUrl}" allowfullscreen allow="autoplay"></iframe>`;
-          }
-        },600);
-      });
-      card.addEventListener('mouseleave',()=>{
-        clearTimeout(hoverTimers[v.id]);
-        const pc=document.getElementById('pc-'+v.id);
-        if(pc)pc.innerHTML='';
-      });
-    }
+    if(embUrl)card.dataset.emburl=embUrl;
     g.appendChild(card);
+  });
+  setupObserver();
+  g.querySelectorAll('.vcard').forEach(card=>{
+    if(card.dataset.emburl)gridObserver.observe(card);
   });
 }
 
