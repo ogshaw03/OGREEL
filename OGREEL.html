@@ -397,6 +397,10 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
         </div>
       </div>
       <div class="form-row">
+        <label class="form-label">開始時間（例: 1:30 または 90）</label>
+        <input type="text" class="form-input" id="videoStart" placeholder="0:00（省略可）">
+      </div>
+      <div class="form-row">
         <label class="form-label">メモ</label>
         <textarea class="form-input" id="videoNote" placeholder="自由にメモ..."></textarea>
       </div>
@@ -815,6 +819,19 @@ window.copyCode=function(){
 
 // ── Helpers ──
 function notify(msg){const n=document.getElementById('notification');n.textContent=msg;n.style.display='block';setTimeout(()=>n.style.display='none',2200)}
+function parseStartTime(val){
+  if(!val||!val.trim())return 0;
+  val=val.trim();
+  if(/^\d+$/.test(val))return parseInt(val);
+  const m=val.match(/^(\d+):(\d{2})$/);
+  if(m)return parseInt(m[1])*60+parseInt(m[2]);
+  return 0;
+}
+function secsToTime(s){
+  if(!s)return'';
+  const m=Math.floor(s/60),sec=s%60;
+  return m+':'+(sec<10?'0':'')+sec;
+}
 function detectPlatform(url){
   if(!url)return'other';
   if(/youtube\.com|youtu\.be/.test(url))return'yt';
@@ -867,6 +884,7 @@ window.openAddModal=function(id=null){
   document.getElementById('videoUrl').value=v?v.url:'';
   document.getElementById('videoTitle').value=v?v.title:'';
   document.getElementById('videoNote').value=v?v.note||'':'';
+  document.getElementById('videoStart').value=v&&v.startTime?secsToTime(v.startTime):'';
   if(v&&v.tags)state.currentTags=[...v.tags];
   renderTagPills();
   populateFolderSelect(v?v.folder||'':'');
@@ -913,8 +931,9 @@ window.saveVideo=async function(){
   const title=document.getElementById('videoTitle').value.trim()||(platformLabel(p)+' 動画');
   const folder=document.getElementById('videoFolder').value;
   const note=document.getElementById('videoNote').value.trim();
+  const startTime=parseStartTime(document.getElementById('videoStart').value);
   const thumb=p==='vm'?document.getElementById('videoUrl').dataset.vimeoThumb||'':'';
-  const data={url,vid:vid||null,platform:p,title,tags:state.currentTags,folder,note,thumb,fav:false,createdAt:Date.now(),addedBy:currentUser.uid,addedByName:currentUser.displayName||''};
+  const data={url,vid:vid||null,platform:p,title,tags:state.currentTags,folder,note,thumb,startTime,fav:false,createdAt:Date.now(),addedBy:currentUser.uid,addedByName:currentUser.displayName||''};
   try{
     if(state.editId){
       const existing=videos.find(x=>x.id===state.editId);
@@ -940,8 +959,9 @@ window.toggleFav=async function(id){
 }
 
 function getPlayerEmbedUrl(v){
-  if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&rel=0&modestbranding=1`;
-  if(v.platform==='vm'&&v.vid)return`https://player.vimeo.com/video/${v.vid}?autoplay=1`;
+  const s=v.startTime||0;
+  if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&rel=0&modestbranding=1${s?`&start=${s}`:''}`;
+  if(v.platform==='vm'&&v.vid)return`https://player.vimeo.com/video/${v.vid}?autoplay=1${s?`#t=${s}s`:''}`;
   if(v.platform==='nc'&&v.vid)return`https://embed.nicovideo.jp/watch/${v.vid}?autoplay=1`;
   if(v.platform==='gd'&&v.vid)return`https://drive.google.com/file/d/${v.vid}/preview?autoplay=1`;
   return null;
@@ -1022,8 +1042,9 @@ function getFiltered(){
 let gridObserver=null;
 function getEmbedUrl(v){
   if(v.platform==='x')return null;
-  if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&loop=1&playlist=${v.vid}`;
-  if(v.platform==='vm'&&v.vid)return`https://player.vimeo.com/video/${v.vid}?autoplay=1&muted=1&controls=0&loop=1`;
+  const s=v.startTime||0;
+  if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&loop=1&playlist=${v.vid}${s?`&start=${s}`:''}`;
+  if(v.platform==='vm'&&v.vid)return`https://player.vimeo.com/video/${v.vid}?autoplay=1&muted=1&controls=0&loop=1${s?`#t=${s}s`:''}`;
   if(v.platform==='nc'&&v.vid)return`https://embed.nicovideo.jp/watch/${v.vid}?autoplay=1&muted=1`;
   if(v.platform==='gd'&&v.vid)return`https://drive.google.com/file/d/${v.vid}/preview?autoplay=1`;
   return null;
@@ -1090,6 +1111,7 @@ function makeCard(v){
           <div class="vcard-overlay-title">${v.title||'無題'}</div>
           <div class="vcard-overlay-meta">
             ${folderName?`<span class="vcard-overlay-tag">📁 ${folderName}</span>`:''}
+            ${v.startTime?`<span class="vcard-overlay-tag">⏱ ${secsToTime(v.startTime)}</span>`:''}
             ${(v.tags||[]).map(t=>`<span class="vcard-overlay-tag">${t}</span>`).join('')}
           </div>
           ${v.note?`<div class="vcard-overlay-note">📝 ${v.note}</div>`:''}
