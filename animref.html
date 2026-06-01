@@ -56,6 +56,9 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .ws-item-code{font-size:11px;color:var(--text3);margin-top:2px}
 .ws-item-del{font-size:12px;color:var(--text3);padding:4px 8px;border-radius:4px}
 .ws-role-badge{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;letter-spacing:.5px}
+.ws-item-actions{display:flex;gap:4px;align-items:center}
+.ws-item-delete{font-size:12px;color:var(--text3);padding:4px 8px;border-radius:4px}
+.ws-item-delete:hover{color:var(--red);background:rgba(255,90,90,.1)}
 .ws-role-owner{background:rgba(124,111,255,.2);color:#7c6fff;border:1px solid rgba(124,111,255,.4)}
 .ws-role-member{background:rgba(90,255,160,.15);color:#5affa0;border:1px solid rgba(90,255,160,.3)}
 .ws-item-del:hover{color:var(--red);background:rgba(255,90,90,.1)}
@@ -540,7 +543,10 @@ function renderWsList(list){
         <div class="ws-item-name" style="display:flex;align-items:center;gap:7px">${ws.name}${roleBadge}</div>
         <div class="ws-item-code">招待コード: ${ws.code}</div>
       </div>
-      <button class="ws-item-del" onclick="event.stopPropagation();leaveWorkspace('${ws.id}')" title="リストから削除">✕</button>`;
+      <div class="ws-item-actions">
+        ${ws.isOwner?`<button class="ws-item-delete" onclick="event.stopPropagation();deleteWorkspace('${ws.id}','${ws.name}')" title="完全削除（データも削除）">🗑️</button>`:''}
+        <button class="ws-item-del" onclick="event.stopPropagation();leaveWorkspace('${ws.id}')" title="リストから削除">✕</button>
+      </div>`;
     item.addEventListener('click',()=>enterWorkspace(ws.id, ws.name, ws.code, color));
     el.appendChild(item);
   });
@@ -583,6 +589,26 @@ window.leaveWorkspace=async function(id){
   const list=await getUserWorkspaces();
   renderWsList(list);
   notify('ワークスペースをリストから削除しました');
+}
+
+window.deleteWorkspace=async function(id, name){
+  if(!confirm(`「${name}」を完全削除しますか？\n\n動画・フォルダを含むすべてのデータが削除されます。\nこの操作は元に戻せません。`))return;
+  try{
+    notify('削除中...');
+    // Delete videos
+    const videoSnap=await getDocs(collection(db,'workspaces',id,'videos'));
+    for(const d of videoSnap.docs) await deleteDoc(d.ref);
+    // Delete folders
+    const folderSnap=await getDocs(collection(db,'workspaces',id,'folders'));
+    for(const d of folderSnap.docs) await deleteDoc(d.ref);
+    // Delete workspace doc
+    await deleteDoc(doc(db,'workspaces',id));
+    // Remove from user's list
+    await removeUserWorkspace(id);
+    const list=await getUserWorkspaces();
+    renderWsList(list);
+    notify('ワークスペースを完全削除しました');
+  }catch(e){notify('削除失敗: '+e.message)}
 }
 
 function enterWorkspace(id, name, code, color){
