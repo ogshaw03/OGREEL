@@ -583,16 +583,17 @@ async function checkAccess(user){
   try{
     const snap=await getDoc(ACCESS_DOC);
     if(!snap.exists()){
-      // First user becomes admin
-      await setDoc(ACCESS_DOC,{adminEmail:user.email,allowedEmails:[],createdAt:Date.now()});
+      await setDoc(ACCESS_DOC,{adminEmails:[user.email],allowedEmails:[],createdAt:Date.now()});
       return 'admin';
     }
     const data=snap.data();
-    if(data.adminEmail===user.email)return 'admin';
+    // Support both old adminEmail and new adminEmails array
+    const admins=[...(data.adminEmails||[])];
+    if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);
+    if(admins.includes(user.email))return 'admin';
     if((data.allowedEmails||[]).includes(user.email))return 'member';
     return false;
   }catch(e){
-    // If rules not set yet, allow through
     return 'member';
   }
 }
@@ -602,22 +603,29 @@ async function renderAllowedUsers(){
   const data=snap.data()||{};
   const list=document.getElementById('allowedUserList');
   list.innerHTML='';
-  // Admin row
-  const adminRow=document.createElement('div');
-  adminRow.className='allowed-user-item';
-  adminRow.innerHTML=`<span class="allowed-user-email">${data.adminEmail||''}</span><span class="allowed-user-role">管理者</span>`;
-  list.appendChild(adminRow);
-  // Members
-  (data.allowedEmails||[]).forEach(email=>{
+  // Build admin list (support legacy single adminEmail)
+  const admins=[...(data.adminEmails||[])];
+  if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);
+  const members=(data.allowedEmails||[]);
+  // Admin rows
+  admins.forEach(email=>{
     const row=document.createElement('div');
     row.className='allowed-user-item';
-    row.innerHTML=`<span class="allowed-user-email">${email}</span><button class="allowed-user-del" onclick="removeAllowedUser('${email}')">削除</button>`;
+    const isSelf=email===currentUser.email;
+    row.innerHTML=`<span class="allowed-user-email">${email}${isSelf?' (自分)':''}</span><span class="allowed-user-role">管理者</span>${!isSelf?`<button class="allowed-user-del" onclick="demoteAdmin('${email}')" title="メンバーに変更">↓</button>`:''}<button class="allowed-user-del" onclick="removeAllowedUser('${email}',true)" title="削除">✕</button>`;
     list.appendChild(row);
   });
-  if(!(data.allowedEmails||[]).length){
+  // Member rows
+  members.forEach(email=>{
+    const row=document.createElement('div');
+    row.className='allowed-user-item';
+    row.innerHTML=`<span class="allowed-user-email">${email}</span><button class="allowed-user-del" onclick="promoteToAdmin('${email}')" title="管理者に昇格">↑</button><button class="allowed-user-del" onclick="removeAllowedUser('${email}')" title="削除">✕</button>`;
+    list.appendChild(row);
+  });
+  if(!admins.length&&!members.length){
     const empty=document.createElement('div');
     empty.style.cssText='font-size:12px;color:var(--text3);padding:8px';
-    empty.textContent='管理者以外の許可ユーザーはいません';
+    empty.textContent='許可ユーザーはいません';
     list.appendChild(empty);
   }
 }
@@ -625,28 +633,63 @@ async function renderAllowedUsers(){
 window.addAllowedUser=async function(){
   const email=document.getElementById('adminNewEmail').value.trim().toLowerCase();
   if(!email){notify('メールアドレスを入力してください');return}
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){notify('正しいメールアドレスを入力してください');return}
   try{
     const snap=await getDoc(ACCESS_DOC);
     const data=snap.data()||{};
-    if(data.adminEmail===email){notify('管理者は既に追加されています');return}
-    const emails=[...(data.allowedEmails||[])];
-    if(emails.includes(email)){notify('既に追加されています');return}
-    emails.push(email);
-    await updateDoc(ACCESS_DOC,{allowedEmails:emails});
+    const admins=[...(data.adminEmails||[])];
+    if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);
+    const members=[...(data.allowedEmails||[])];
+    if(admins.includes(email)||members.includes(email)){notify('既に追加されています');return}
+    members.push(email);
+    await updateDoc(ACCESS_DOC,{allowedEmails:members});
     document.getElementById('adminNewEmail').value='';
     await renderAllowedUsers();
     notify('追加しました: '+email);
   }catch(e){notify('追加失敗: '+e.message)}
 }
 
-window.removeAllowedUser=async function(email){
+window.promoteToAdmin=async function(email){
+  if(!confirm(`${email} を管理者に昇格しますか？`))return;
+  try{
+    const snap=await getDoc(ACCESS_DOC);
+    const data=snap.data()||{};
+    const admins=[...(data.adminEmails||[])];
+    if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);
+    if(!admins.includes(email))admins.push(email);
+    const members=(data.allowedEmails||[]).filter(e=>e!==email);
+    await updateDoc(ACCESS_DOC,{adminEmails:admins,allowedEmails:members});
+    await renderAllowedUsers();
+    notify('管理者に昇格しました: '+email);
+  }catch(e){notify('失敗: '+e.message)}
+}
+
+window.demoteAdmin=async function(email){
+  if(!confirm(`${email} をメンバーに変更しますか？`))return;
+  try{
+    const snap=await getDoc(ACCESS_DOC);
+    const data=snap.data()||{};
+    const admins=(data.adminEmails||[]).filter(e=>e!==email);
+    const members=[...(data.allowedEmails||[])];
+    if(!members.includes(email))members.push(email);
+    await updateDoc(ACCESS_DOC,{adminEmails:admins,allowedEmails:members});
+    await renderAllowedUsers();
+    notify('メンバーに変更しました: '+email);
+  }catch(e){notify('失敗: '+e.message)}
+}
+
+window.removeAllowedUser=async function(email,isAdmin=false){
   if(!confirm(`${email} を削除しますか？`))return;
   try{
     const snap=await getDoc(ACCESS_DOC);
     const data=snap.data()||{};
-    const emails=(data.allowedEmails||[]).filter(e=>e!==email);
-    await updateDoc(ACCESS_DOC,{allowedEmails:emails});
+    const update={};
+    if(isAdmin){
+      const admins=(data.adminEmails||[]).filter(e=>e!==email);
+      update.adminEmails=admins;
+    }else{
+      update.allowedEmails=(data.allowedEmails||[]).filter(e=>e!==email);
+    }
+    await updateDoc(ACCESS_DOC,update);
     await renderAllowedUsers();
     notify('削除しました');
   }catch(e){notify('削除失敗: '+e.message)}
