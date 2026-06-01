@@ -139,7 +139,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .vcard-thumb-no-img .no-img-label{font-size:11px;color:rgba(255,255,255,.2);letter-spacing:1px;font-family:var(--font-head)}
 .vcard-thumb-wrap .player-container{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
 .vcard-thumb-wrap .player-container iframe{width:100%;height:100%;border:none}
-.vcard-overlay{position:absolute;bottom:0;left:0;right:0;height:56.25%;display:flex;flex-direction:column;justify-content:flex-end;background:linear-gradient(to top,rgba(0,0,0,.9) 0%,rgba(0,0,0,.5) 60%,transparent 100%);padding:0 10px 8px;pointer-events:none;z-index:10}
+.vcard-overlay{position:absolute;top:0;left:0;right:0;height:56.25%;display:flex;flex-direction:column;justify-content:flex-end;background:linear-gradient(to top,rgba(0,0,0,.88) 0%,rgba(0,0,0,.5) 55%,transparent 100%);padding:0 10px 8px;pointer-events:none;z-index:10;isolation:isolate}
 .vcard-overlay-title{font-size:12px;font-weight:500;color:#fff;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:4px}
 .vcard-overlay-meta{display:flex;flex-wrap:wrap;gap:3px}
 .vcard-overlay-tag{padding:1px 5px;border-radius:8px;font-size:10px;background:rgba(255,255,255,.15);color:rgba(255,255,255,.85)}
@@ -1131,13 +1131,14 @@ function setupObserver(){
           iframe.src=embUrl;
           iframe.allowFullscreen=true;
           iframe.allow='autoplay';
-          iframe.style.opacity='0';
-          iframe.addEventListener('load',()=>{
-            setTimeout(()=>{
-              iframe.style.opacity='1';
-              if(thumb)thumb.style.opacity='0';
-            },1000);
-          });
+          iframe.style.cssText='opacity:0;width:100%;height:100%;border:none';
+          // Show iframe after 1s regardless of load event (GD doesn't always fire it)
+          const showIframe=()=>{
+            iframe.style.opacity='1';
+            if(thumb)thumb.style.opacity='0';
+          };
+          const timer=setTimeout(showIframe,1000);
+          iframe.addEventListener('load',()=>{clearTimeout(timer);setTimeout(showIframe,1000);});
           if(platform==='nc'||platform==='gd'){
             pc._loopTimer=setInterval(()=>{
               const el=pc.querySelector('iframe');
