@@ -1085,14 +1085,7 @@ function setupObserver(){
           iframe.src=embUrl;
           iframe.allowFullscreen=true;
           iframe.allow='autoplay';
-          iframe.style.opacity='0';
-          iframe.style.transition='opacity .4s ease';
-          iframe.addEventListener('load',()=>{
-            setTimeout(()=>{
-              iframe.style.opacity='1';
-              if(thumb)thumb.style.opacity='0';
-            },800);
-          });
+          if(thumb)thumb.style.opacity='0';
           if(platform==='nc'||platform==='gd'){
             pc._loopTimer=setInterval(()=>{
               const el=pc.querySelector('iframe');
