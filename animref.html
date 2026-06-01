@@ -1020,10 +1020,29 @@ function setupObserver(){
     entries.forEach(entry=>{
       const pc=entry.target.querySelector('.player-container');
       const embUrl=entry.target.dataset.emburl;
+      const platform=entry.target.dataset.platform;
       if(!pc||!embUrl)return;
       if(entry.isIntersecting){
-        if(!pc.querySelector('iframe'))pc.innerHTML=`<iframe src="${embUrl}" allowfullscreen allow="autoplay"></iframe>`;
+        if(!pc.querySelector('iframe')){
+          const iframe=document.createElement('iframe');
+          iframe.src=embUrl;
+          iframe.allowFullscreen=true;
+          iframe.allow='autoplay';
+          // Loop for nc/gd by reloading iframe on end
+          if(platform==='nc'||platform==='gd'){
+            iframe.addEventListener('load',()=>{
+              // Poll: reload after estimated end (fallback loop via timeout)
+            });
+            // Reload every time it likely ends — use postMessage for nc if possible
+            pc._loopTimer=setInterval(()=>{
+              const el=pc.querySelector('iframe');
+              if(el){el.src=el.src;}
+            }, platform==='gd'?300000:600000); // gd:5min, nc:10min fallback
+          }
+          pc.appendChild(iframe);
+        }
       }else{
+        if(pc._loopTimer){clearInterval(pc._loopTimer);delete pc._loopTimer;}
         pc.innerHTML='';
       }
     });
