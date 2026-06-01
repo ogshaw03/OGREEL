@@ -133,9 +133,9 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .vcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;position:relative}
 .vcard:hover{border-color:var(--border2);transform:translateY(-5px);box-shadow:0 14px 32px rgba(0,0,0,.45)}
 .vcard-thumb-wrap{position:relative;padding-bottom:56.25%;background:#111;overflow:hidden}
-.vcard-thumb-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.vcard-thumb-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity .4s ease;z-index:1}
 .vcard-thumb-no-img{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:32px}
-.vcard-thumb-wrap .player-container{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.vcard-thumb-wrap .player-container{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
 .vcard-thumb-wrap .player-container iframe{width:100%;height:100%;border:none}
 .vcard-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.85) 0%,rgba(0,0,0,.5) 60%,transparent 100%);padding:28px 10px 8px;pointer-events:none;z-index:2}
 .vcard-overlay-title{font-size:12px;font-weight:500;color:#fff;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:4px}
@@ -1056,6 +1056,7 @@ function setupObserver(){
       const pc=entry.target.querySelector('.player-container');
       const embUrl=entry.target.dataset.emburl;
       const platform=entry.target.dataset.platform;
+      const thumb=entry.target.querySelector('img');
       if(!pc||!embUrl)return;
       if(entry.isIntersecting){
         if(!pc.querySelector('iframe')){
@@ -1063,21 +1064,25 @@ function setupObserver(){
           iframe.src=embUrl;
           iframe.allowFullscreen=true;
           iframe.allow='autoplay';
-          // Loop for nc/gd by reloading iframe on end
+          iframe.style.opacity='0';
+          iframe.style.transition='opacity .4s ease';
+          iframe.addEventListener('load',()=>{
+            setTimeout(()=>{
+              iframe.style.opacity='1';
+              if(thumb)thumb.style.opacity='0';
+            },800);
+          });
           if(platform==='nc'||platform==='gd'){
-            iframe.addEventListener('load',()=>{
-              // Poll: reload after estimated end (fallback loop via timeout)
-            });
-            // Reload every time it likely ends — use postMessage for nc if possible
             pc._loopTimer=setInterval(()=>{
               const el=pc.querySelector('iframe');
               if(el){el.src=el.src;}
-            }, platform==='gd'?300000:600000); // gd:5min, nc:10min fallback
+            }, platform==='gd'?300000:600000);
           }
           pc.appendChild(iframe);
         }
       }else{
         if(pc._loopTimer){clearInterval(pc._loopTimer);delete pc._loopTimer;}
+        if(thumb)thumb.style.opacity='1';
         pc.innerHTML='';
       }
     });
