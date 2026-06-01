@@ -1087,8 +1087,10 @@ function setupObserver(){
           iframe.allow='autoplay';
           iframe.style.opacity='0';
           iframe.addEventListener('load',()=>{
-            iframe.style.opacity='1';
-            if(thumb)thumb.style.opacity='0';
+            setTimeout(()=>{
+              iframe.style.opacity='1';
+              if(thumb)thumb.style.opacity='0';
+            },1000);
           });
           if(platform==='nc'||platform==='gd'){
             pc._loopTimer=setInterval(()=>{
