@@ -475,6 +475,20 @@ onAuthStateChanged(auth, async user=>{
     currentUser=user;
     document.getElementById('headerAvatar').src=user.photoURL||'';
     document.getElementById('loginScreen').classList.add('hidden');
+    // Try to restore last workspace
+    const lastWsRaw=localStorage.getItem('animref_last_ws');
+    if(lastWsRaw){
+      try{
+        const last=JSON.parse(lastWsRaw);
+        // Verify it still exists in user's workspace list
+        const list=await getUserWorkspaces();
+        const found=list.find(x=>x.id===last.id);
+        if(found){
+          enterWorkspace(last.id, last.name, last.code, last.color);
+          return;
+        }
+      }catch(e){}
+    }
     await loadAndShowWsScreen();
   } else {
     currentUser=null;
@@ -626,6 +640,7 @@ window.deleteWorkspace=async function(id, name){
 
 function enterWorkspace(id, name, code, color){
   currentWsId=id; currentWsName=name; currentWsCode=code;
+  localStorage.setItem('animref_last_ws',JSON.stringify({id,name,code,color}));
   document.getElementById('wsScreen').classList.add('hidden');
   document.getElementById('wsSwitcherName').textContent=name;
   document.getElementById('wsSwitcherDot').style.background=color||'#7c6fff';
