@@ -136,6 +136,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .badge-vm{background:#1ab7ea;color:#fff}
 .badge-nc{background:#666;color:#fff}
 .badge-x{background:#000;color:#fff}
+.badge-gd{background:#1a73e8;color:#fff}
 .vcard-actions{position:absolute;top:6px;right:6px;display:flex;gap:4px;opacity:0;transition:opacity .15s;z-index:3}
 .vcard:hover .vcard-actions{opacity:1}
 .vcard-act-btn{width:26px;height:26px;border-radius:5px;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;transition:all .15s}
@@ -282,6 +283,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
       <div class="nav-item" onclick="setFilter('vm',this)"><span class="ni-icon">🎬</span>Vimeo<span class="badge" id="badge-vm">0</span></div>
       <div class="nav-item" onclick="setFilter('nc',this)"><span class="ni-icon">🎴</span>ニコニコ<span class="badge" id="badge-nc">0</span></div>
       <div class="nav-item" onclick="setFilter('x',this)"><span class="ni-icon">✖️</span>X (Twitter)<span class="badge" id="badge-x">0</span></div>
+      <div class="nav-item" onclick="setFilter('gd',this)"><span class="ni-icon">📂</span>Google Drive<span class="badge" id="badge-gd">0</span></div>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">フォルダ</div>
@@ -355,7 +357,10 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 
 <!-- DETAIL MODAL -->
 <div class="modal-bg hidden" id="playerModal" onclick="closeModalBg(event,'playerModal')">
-  <div class="modal">
+  <div class="modal" style="max-width:860px">
+    <div id="playerIframeWrap" style="display:none;position:relative;padding-bottom:56.25%;background:#000;border-radius:14px 14px 0 0;overflow:hidden">
+      <iframe id="playerIframe" style="position:absolute;inset:0;width:100%;height:100%;border:none" allowfullscreen allow="autoplay"></iframe>
+    </div>
     <div class="player-info">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div class="player-title" id="playerTitle"></div>
@@ -367,8 +372,8 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
       <div class="player-meta" id="playerMeta"></div>
       <div class="player-note" id="playerNote" style="display:none"></div>
       <div class="player-tags" id="playerTags"></div>
-      <div style="margin-top:14px">
-        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="openCurrentUrl()">▶ 動画を開く（新しいタブ）</button>
+      <div style="margin-top:14px" id="playerOpenBtn">
+        <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="openCurrentUrl()">↗ 元ページで開く</button>
       </div>
     </div>
   </div>
@@ -653,18 +658,24 @@ function detectPlatform(url){
   if(/vimeo\.com/.test(url))return'vm';
   if(/nicovideo\.jp|nico\.ms/.test(url))return'nc';
   if(/twitter\.com|x\.com/.test(url))return'x';
+  if(/drive\.google\.com/.test(url))return'gd';
   return'other';
 }
 function getYtId(url){const m=url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);return m?m[1]:null}
 function getVmId(url){const m=url.match(/vimeo\.com\/(\d+)/);return m?m[1]:null}
 function getNcId(url){const m=url.match(/\/watch\/((?:sm|nm)\d+)/);return m?m[1]:null}
+function getGdId(url){
+  const m=url.match(/\/d\/([a-zA-Z0-9_-]+)/)||url.match(/id=([a-zA-Z0-9_-]+)/);
+  return m?m[1]:null;
+}
 function getThumb(v){
   if(v.platform==='yt'&&v.vid)return`https://img.youtube.com/vi/${v.vid}/mqdefault.jpg`;
   if(v.platform==='vm'&&v.thumb)return v.thumb;
   return'';
 }
-function platformLabel(p){return{yt:'YouTube',vm:'Vimeo',nc:'ニコニコ',x:'X'}[p]||'OTHER'}
+function platformLabel(p){return{yt:'YouTube',vm:'Vimeo',nc:'ニコニコ',x:'X',gd:'Drive'}[p]||'OTHER'}
 function platformClass(p){return'badge-'+(p||'yt')}
+// badge-gd defined in CSS
 
 window.parseUrl=async function(){
   const url=document.getElementById('videoUrl').value.trim();
@@ -681,6 +692,7 @@ window.parseUrl=async function(){
     }catch(e){}
   }else if(p==='nc'){if(!ti.value)ti.value='(ニコニコ動画)'}
   else if(p==='x'){if(!ti.value)ti.value='(X投稿)'}
+  else if(p==='gd'){if(!ti.value)ti.value='(Googleドライブ動画)'}
   notify('URL解析完了');
 }
 
@@ -734,7 +746,7 @@ window.saveVideo=async function(){
   const url=document.getElementById('videoUrl').value.trim();
   if(!url){notify('URLを入力してください');return}
   const p=detectPlatform(url);
-  const vid=p==='yt'?getYtId(url):p==='vm'?getVmId(url):p==='nc'?getNcId(url):null;
+  const vid=p==='yt'?getYtId(url):p==='vm'?getVmId(url):p==='nc'?getNcId(url):p==='gd'?getGdId(url):null;
   const title=document.getElementById('videoTitle').value.trim()||(platformLabel(p)+' 動画');
   const folder=document.getElementById('videoFolder').value;
   const note=document.getElementById('videoNote').value.trim();
@@ -764,9 +776,27 @@ window.toggleFav=async function(id){
   }catch(e){notify('更新失敗')}
 }
 
+function getPlayerEmbedUrl(v){
+  if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&rel=0&modestbranding=1`;
+  if(v.platform==='vm'&&v.vid)return`https://player.vimeo.com/video/${v.vid}?autoplay=1`;
+  if(v.platform==='nc'&&v.vid)return`https://embed.nicovideo.jp/watch/${v.vid}?autoplay=1`;
+  if(v.platform==='gd'&&v.vid)return`https://drive.google.com/file/d/${v.vid}/preview?autoplay=1`;
+  return null;
+}
 window.openPlayer=function(id){
   const v=videos.find(x=>x.id===id);if(!v)return;
   state.currentPlayId=id;
+  // iframe player
+  const embedUrl=getPlayerEmbedUrl(v);
+  const wrap=document.getElementById('playerIframeWrap');
+  const iframe=document.getElementById('playerIframe');
+  if(embedUrl){
+    iframe.src=embedUrl;
+    wrap.style.display='block';
+  }else{
+    iframe.src='';
+    wrap.style.display='none';
+  }
   document.getElementById('playerTitle').textContent=v.title;
   const folder=v.folder?folders.find(f=>f.id===v.folder):null;
   document.getElementById('playerMeta').innerHTML=
@@ -832,6 +862,7 @@ function getEmbedUrl(v){
   if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&loop=1&playlist=${v.vid}`;
   if(v.platform==='vm'&&v.vid)return`https://player.vimeo.com/video/${v.vid}?autoplay=1&muted=1&controls=0&loop=1`;
   if(v.platform==='nc'&&v.vid)return`https://embed.nicovideo.jp/watch/${v.vid}?autoplay=1&muted=1`;
+  if(v.platform==='gd'&&v.vid)return`https://drive.google.com/file/d/${v.vid}/preview?autoplay=1`;
   return null;
 }
 function setupObserver(){
@@ -895,7 +926,10 @@ function renderGrid(){
 function renderSidebar(){
   document.getElementById('badge-all').textContent=videos.length;
   document.getElementById('badge-fav').textContent=videos.filter(v=>v.fav).length;
-  ['yt','vm','nc','x'].forEach(p=>{document.getElementById('badge-'+p).textContent=videos.filter(v=>v.platform===p).length});
+  ['yt','vm','nc','x','gd'].forEach(p=>{
+    const el=document.getElementById('badge-'+p);
+    if(el)el.textContent=videos.filter(v=>v.platform===p).length;
+  });
   const fl=document.getElementById('folderList');
   fl.innerHTML='';
   folders.forEach(f=>{
@@ -944,7 +978,13 @@ window.saveFolder=async function(){
   }catch(e){notify('作成失敗: '+e.message)}
 }
 
-window.closeModal=function(id){document.getElementById(id).classList.add('hidden')}
+window.closeModal=function(id){
+  document.getElementById(id).classList.add('hidden');
+  if(id==='playerModal'){
+    const iframe=document.getElementById('playerIframe');
+    if(iframe)iframe.src='';
+  }
+}
 window.closeModalBg=function(e,id){if(e.target.classList.contains('modal-bg'))closeModal(id)}
 
 document.getElementById('searchInput').addEventListener('input',renderGrid);
