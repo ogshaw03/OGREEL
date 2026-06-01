@@ -108,6 +108,9 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .folder-del-btn{font-size:10px;color:transparent;padding:2px 4px;border-radius:3px;line-height:1;flex-shrink:0;transition:all .15s}
 .folder-item:hover .folder-del-btn{color:var(--text3)}
 .folder-del-btn:hover{color:var(--red)!important;background:rgba(255,90,90,.15)}
+.folder-item.drag-over{background:rgba(124,111,255,.15);border:1px dashed var(--accent);border-radius:var(--radius2);color:var(--accent)}
+.vcard.dragging{opacity:.4;cursor:grabbing}
+.vcard{cursor:grab}
 .folder-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .new-folder-btn{display:flex;align-items:center;gap:6px;padding:5px 8px;font-size:12px;color:var(--text3);cursor:pointer;border-radius:var(--radius2);width:100%}
 .new-folder-btn:hover{color:var(--text2)}
@@ -149,7 +152,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .vcard:hover .vcard-actions{opacity:1}
 .vcard-act-btn{width:26px;height:26px;border-radius:5px;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;transition:all .15s}
 .vcard-act-btn:hover{background:rgba(255,255,255,.15)}
-.vcard-body{padding:10px 12px}
+.vcard-body{display:none!important;padding:10px 12px}
 .vcard-title{font-size:13px;font-weight:500;line-height:1.4;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .vcard-meta{font-size:11px;color:var(--text3);margin-bottom:6px}
 .vcard-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
@@ -162,7 +165,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .group-header-count{font-size:11px;color:var(--text3)}
 .video-grid.list-view .vcard{display:flex;flex-direction:row}
 .video-grid.list-view .vcard-thumb-wrap{width:180px;flex-shrink:0;padding-bottom:0;height:101px}
-.video-grid.list-view .vcard-body{flex:1;display:flex;flex-direction:column;justify-content:center}
+.video-grid.list-view .vcard-body{display:flex!important;flex:1;flex-direction:column;justify-content:center;padding:10px 12px}
 
 /* MODALS */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:20px}
@@ -1065,6 +1068,14 @@ function makeCard(v){
     const folderName=v.folder?folders.find(f=>f.id===v.folder)?.name||'':'';
     const card=document.createElement('div');
     card.className='vcard';
+    card.draggable=true;
+    card.dataset.vid=v.id;
+    card.addEventListener('dragstart',e=>{
+      e.dataTransfer.setData('videoId',v.id);
+      e.dataTransfer.effectAllowed='move';
+      setTimeout(()=>card.classList.add('dragging'),0);
+    });
+    card.addEventListener('dragend',()=>card.classList.remove('dragging'));
     card.innerHTML=`
       <div class="vcard-thumb-wrap">
         ${thumb?`<img src="${thumb}" alt="" loading="lazy">`:`<div class="vcard-thumb-no-img">▶</div>`}
@@ -1171,6 +1182,17 @@ function renderSidebar(){
     el.className='folder-item';el.dataset.id=f.id;
     el.innerHTML=`<span class="folder-dot" style="background:${COLOR_HEX[f.color]||'#7c6fff'}"></span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</span><span style="font-size:10px;color:var(--text3);margin-right:2px">${videos.filter(v=>v.folder===f.id).length}</span><button class="folder-del-btn" onclick="event.stopPropagation();deleteFolder('${f.id}','${f.name}')" title="削除">✕</button>`;
     el.addEventListener('click',()=>setFolder(f.id));
+    el.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';el.classList.add('drag-over')});
+    el.addEventListener('dragleave',()=>el.classList.remove('drag-over'));
+    el.addEventListener('drop',async e=>{
+      e.preventDefault();el.classList.remove('drag-over');
+      const videoId=e.dataTransfer.getData('videoId');
+      if(!videoId)return;
+      try{
+        await updateDoc(doc(db,'workspaces',currentWsId,'videos',videoId),{folder:f.id});
+        notify(`「${f.name}」に移動しました`);
+      }catch(err){notify('移動失敗: '+err.message)}
+    });
     fl.appendChild(el);
   });
   const tl=document.getElementById('tagList');
