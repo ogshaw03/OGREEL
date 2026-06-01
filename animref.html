@@ -1165,7 +1165,11 @@ function renderSidebar(){
   });
 }
 
-function renderAll(){renderSidebar();renderGrid()}
+function renderAll(){
+  if(gridObserver){gridObserver.disconnect();gridObserver=null;}
+  renderSidebar();
+  renderGrid();
+}
 
 window.openFolderModal=function(){
   document.getElementById('folderName').value='';
