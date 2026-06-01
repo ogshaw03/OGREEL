@@ -362,6 +362,9 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
         <button class="view-btn active" id="gridViewBtn" onclick="setView('grid')">⊞</button>
         <button class="view-btn" id="listViewBtn" onclick="setView('list')">≡</button>
       </div>
+      <button class="btn btn-ghost" id="autoplayToggle" onclick="toggleAutoplay()" title="自動再生の切り替え" style="font-size:12px;gap:5px">
+        <span id="autoplayIcon">▶</span><span id="autoplayLabel">自動再生 ON</span>
+      </button>
     </div>
     <div class="grid-wrap"><div class="video-grid" id="videoGrid"></div></div>
   </div>
@@ -510,6 +513,7 @@ const COLOR_HEX={purple:'#7c6fff',blue:'#5a8fff',green:'#5affa0',amber:'#ffb85a'
 const WS_COLORS=['#7c6fff','#5a8fff','#5affa0','#ffb85a','#ff5a5a','#ff5aaa'];
 
 let videos=[], folders=[];
+let autoplayEnabled=localStorage.getItem('ogreel_autoplay')!=='false';
 let state={filter:'all',folder:null,tag:null,view:'grid',editId:null,currentTags:[],selectedColor:'purple',currentPlayId:null};
 let currentUser=null;
 let currentWsId=null;
@@ -788,10 +792,17 @@ function enterWorkspace(id, name, code, color){
   document.getElementById('wsScreen').classList.add('hidden');
   document.getElementById('wsSwitcherName').textContent=name;
   document.getElementById('wsSwitcherDot').style.background=color||'#7c6fff';
+  initAutoplayBtn();
   startListeners();
 }
 
 // ── Realtime Listeners ──
+function initAutoplayBtn(){
+  document.getElementById('autoplayIcon').textContent=autoplayEnabled?'▶':'⏸';
+  document.getElementById('autoplayLabel').textContent=autoplayEnabled?'自動再生 ON':'サムネ表示';
+  document.getElementById('autoplayToggle').style.color=autoplayEnabled?'var(--green)':'var(--text2)';
+}
+
 function startListeners(){
   if(unsubVideos)unsubVideos();
   if(unsubFolders)unsubFolders();
@@ -1039,8 +1050,18 @@ function getFiltered(){
   });
 }
 
+window.toggleAutoplay=function(){
+  autoplayEnabled=!autoplayEnabled;
+  localStorage.setItem('ogreel_autoplay',autoplayEnabled);
+  document.getElementById('autoplayIcon').textContent=autoplayEnabled?'▶':'⏸';
+  document.getElementById('autoplayLabel').textContent=autoplayEnabled?'自動再生 ON':'サムネ表示';
+  document.getElementById('autoplayToggle').style.color=autoplayEnabled?'var(--green)':'var(--text2)';
+  renderAll();
+}
+
 let gridObserver=null;
 function getEmbedUrl(v){
+  if(!autoplayEnabled)return null;
   if(v.platform==='x')return null;
   const s=v.startTime||0;
   if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&loop=1&playlist=${v.vid}${s?`&start=${s}`:''}`;
