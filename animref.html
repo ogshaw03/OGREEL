@@ -147,6 +147,11 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .vcard-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
 .vcard-tag{padding:2px 6px;border-radius:10px;font-size:10px;background:var(--bg4);color:var(--text2)}
 .vcard-note{font-size:11px;color:var(--text3);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.group-header{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:6px 2px;margin-top:8px}
+.group-header:first-child{margin-top:0}
+.group-header-label{font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:1px;color:var(--text2);text-transform:uppercase}
+.group-header-line{flex:1;height:1px;background:var(--border)}
+.group-header-count{font-size:11px;color:var(--text3)}
 .video-grid.list-view .vcard{display:flex;flex-direction:row}
 .video-grid.list-view .vcard-thumb-wrap{width:180px;flex-shrink:0;padding-bottom:0;height:101px}
 .video-grid.list-view .vcard-body{flex:1;display:flex;flex-direction:column;justify-content:center}
@@ -303,6 +308,9 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
           <option value="newest">新しい順</option>
           <option value="oldest">古い順</option>
           <option value="alpha">名前順</option>
+          <option value="folder">フォルダ別</option>
+          <option value="platform">プラットフォーム別</option>
+          <option value="tag">タグ別</option>
         </select>
       </div>
       <div class="view-toggle">
@@ -850,7 +858,7 @@ function getFiltered(){
     return true;
   }).sort((a,b)=>{
     const s=document.getElementById('sortSelect').value;
-    if(s==='newest')return b.createdAt-a.createdAt;
+    if(s==='newest'||s==='folder'||s==='platform'||s==='tag')return b.createdAt-a.createdAt;
     if(s==='oldest')return a.createdAt-b.createdAt;
     return a.title.localeCompare(b.title,'ja');
   });
@@ -881,16 +889,7 @@ function setupObserver(){
   },{threshold:0.1});
 }
 
-function renderGrid(){
-  const list=getFiltered();
-  const g=document.getElementById('videoGrid');
-  document.getElementById('countLabel').textContent=`${list.length}件`;
-  g.innerHTML='';
-  if(!list.length){
-    g.innerHTML=`<div class="empty-state"><div class="empty-icon">🎞️</div><div class="empty-title">動画がありません</div><div class="empty-desc">「＋ 追加」ボタンから動画URLを登録してください</div></div>`;
-    return;
-  }
-  list.forEach(v=>{
+function makeCard(v){
     const thumb=getThumb(v);
     const folderName=v.folder?folders.find(f=>f.id===v.folder)?.name||'':'';
     const card=document.createElement('div');
@@ -913,10 +912,66 @@ function renderGrid(){
         ${v.note?`<div class="vcard-note">📝 ${v.note}</div>`:''}
       </div>`;
     card.addEventListener('click',()=>openPlayer(v.id));
-    const embUrl=getEmbedUrl(v);
-    if(embUrl)card.dataset.emburl=embUrl;
-    g.appendChild(card);
-  });
+  const embUrl=getEmbedUrl(v);
+  if(embUrl){card.dataset.emburl=embUrl;card.dataset.platform=v.platform;}
+  return card;
+}
+
+function addGroupHeader(g, label, count){
+  const h=document.createElement('div');
+  h.className='group-header';
+  h.innerHTML=`<span class="group-header-label">${label}</span><span class="group-header-line"></span><span class="group-header-count">${count}件</span>`;
+  g.appendChild(h);
+}
+
+function renderGrid(){
+  const list=getFiltered();
+  const g=document.getElementById('videoGrid');
+  document.getElementById('countLabel').textContent=`${list.length}件`;
+  g.innerHTML='';
+  if(!list.length){
+    g.innerHTML=`<div class="empty-state"><div class="empty-icon">🎞️</div><div class="empty-title">動画がありません</div><div class="empty-desc">「＋ 追加」ボタンから動画URLを登録してください</div></div>`;
+    setupObserver();return;
+  }
+  const sort=document.getElementById('sortSelect').value;
+
+  if(sort==='folder'||sort==='platform'||sort==='tag'){
+    let groups=[];
+    if(sort==='folder'){
+      const folderMap={};
+      list.forEach(v=>{
+        const key=v.folder||'__none';
+        if(!folderMap[key])folderMap[key]=[];
+        folderMap[key].push(v);
+      });
+      // named folders first, then no folder
+      folders.forEach(f=>{
+        if(folderMap[f.id])groups.push({label:'📁 '+f.name,items:folderMap[f.id]});
+      });
+      if(folderMap['__none'])groups.push({label:'フォルダなし',items:folderMap['__none']});
+    } else if(sort==='platform'){
+      const order=['yt','vm','nc','x','gd','other'];
+      const platMap={};
+      list.forEach(v=>{const k=v.platform||'other';if(!platMap[k])platMap[k]=[];platMap[k].push(v);});
+      order.forEach(p=>{if(platMap[p])groups.push({label:platformLabel(p),items:platMap[p]});});
+    } else if(sort==='tag'){
+      const tagged={};
+      const untagged=[];
+      list.forEach(v=>{
+        if(!v.tags||!v.tags.length){untagged.push(v);return;}
+        v.tags.forEach(t=>{if(!tagged[t])tagged[t]=[];tagged[t].push(v);});
+      });
+      Object.keys(tagged).sort().forEach(t=>groups.push({label:'🏷 '+t,items:tagged[t]}));
+      if(untagged.length)groups.push({label:'タグなし',items:untagged});
+    }
+    groups.forEach(group=>{
+      addGroupHeader(g, group.label, group.items.length);
+      group.items.forEach(v=>g.appendChild(makeCard(v)));
+    });
+  } else {
+    list.forEach(v=>g.appendChild(makeCard(v)));
+  }
+
   setupObserver();
   g.querySelectorAll('.vcard').forEach(card=>{
     if(card.dataset.emburl)gridObserver.observe(card);
