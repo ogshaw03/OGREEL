@@ -267,6 +267,22 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
         </div>
       </div>
     </div>
+    <div id="adminSection" style="display:none">
+      <hr class="ws-divider">
+      <div class="ws-section">
+        <div class="ws-label">⚙ アクセス管理（管理者）</div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="url-parse-row">
+            <input type="email" class="form-input" id="adminNewEmail" placeholder="許可するメールアドレス">
+            <button class="btn btn-primary" onclick="addAllowedUser()">追加</button>
+          </div>
+        </div>
+        <div id="allowedUserList" style="display:flex;flex-direction:column;gap:6px"></div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.8;margin-top:8px">
+          ※ 管理者は常にアクセス可能です。追加したメールアドレスのGoogleアカウントのみアクセスできます。
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -285,7 +301,6 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
   <div class="header-actions">
     <span class="sync-dot" title="リアルタイム同期中"></span>
     <button class="btn btn-ghost" onclick="openShareModal()">🔗 共有</button>
-    <button class="btn btn-ghost" id="adminBtn" style="display:none" onclick="openAdminModal()">⚙ 管理</button>
     <button class="btn btn-primary" onclick="openAddModal()">＋ 追加</button>
     <img id="headerAvatar" class="user-avatar" src="" onclick="showWsScreen()" title="アカウント">
   </div>
@@ -451,33 +466,6 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
   </div>
 </div>
 
-<!-- ADMIN MODAL -->
-<div class="modal-bg hidden" id="adminModal" onclick="closeModalBg(event,'adminModal')">
-  <div class="modal" style="max-width:480px">
-    <div class="modal-header">
-      <div class="modal-title">⚙ アクセス管理</div>
-      <button class="btn-icon" onclick="closeModal('adminModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <label class="form-label">許可するGoogleメールアドレスを追加</label>
-        <div class="url-parse-row">
-          <input type="email" class="form-input" id="adminNewEmail" placeholder="example@gmail.com">
-          <button class="btn btn-primary" onclick="addAllowedUser()">追加</button>
-        </div>
-      </div>
-      <div class="form-row">
-        <label class="form-label">許可済みユーザー</label>
-        <div id="allowedUserList" style="display:flex;flex-direction:column;gap:6px"></div>
-      </div>
-      <div style="font-size:11px;color:var(--text3);line-height:1.8;margin-top:8px">
-        ※ 管理者（最初のユーザー）は常にアクセス可能です。<br>
-        ※ メールアドレスはGoogleアカウントのものを入力してください。
-      </div>
-    </div>
-  </div>
-</div>
-
 <div id="notification" style="display:none" class="notification"></div>
 
 <script type="module">
@@ -526,7 +514,7 @@ onAuthStateChanged(auth, async user=>{
       return;
     }
     // Show admin button if admin
-    if(access==='admin')document.getElementById('adminBtn').style.display='';
+    // admin check done in loadAndShowWsScreen
     // Try to restore last workspace
     const lastWsRaw=localStorage.getItem('animref_last_ws');
     if(lastWsRaw){
@@ -585,11 +573,6 @@ async function checkAccess(user){
     // If rules not set yet, allow through
     return 'member';
   }
-}
-
-window.openAdminModal=async function(){
-  await renderAllowedUsers();
-  document.getElementById('adminModal').classList.remove('hidden');
 }
 
 async function renderAllowedUsers(){
@@ -668,6 +651,14 @@ async function loadAndShowWsScreen(){
   renderWsUserInfo();
   const list=await getUserWorkspaces();
   renderWsList(list);
+  // Show admin section if admin
+  const access=await checkAccess(currentUser);
+  if(access==='admin'){
+    document.getElementById('adminSection').style.display='';
+    await renderAllowedUsers();
+  } else {
+    document.getElementById('adminSection').style.display='none';
+  }
   document.getElementById('wsScreen').classList.remove('hidden');
 }
 
