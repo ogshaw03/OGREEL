@@ -1085,7 +1085,11 @@ function setupObserver(){
           iframe.src=embUrl;
           iframe.allowFullscreen=true;
           iframe.allow='autoplay';
-          if(thumb)thumb.style.opacity='0';
+          iframe.style.opacity='0';
+          iframe.addEventListener('load',()=>{
+            iframe.style.opacity='1';
+            if(thumb)thumb.style.opacity='0';
+          });
           if(platform==='nc'||platform==='gd'){
             pc._loopTimer=setInterval(()=>{
               const el=pc.querySelector('iframe');
