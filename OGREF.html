@@ -862,6 +862,8 @@ function enterWorkspace(id, name, code, color){
   document.getElementById('wsSwitcherDot').style.background=color||'#7c6fff';
   initAutoplayBtn();
   startListeners();
+  localFileHandles={};
+  tryRestoreFolder();
 }
 
 // ── Realtime Listeners ──
@@ -1413,6 +1415,100 @@ window.closeModalBg=function(e,id){if(e.target.classList.contains('modal-bg'))cl
 
 // ── LOCAL FOLDER ──
 let localFileHandles={};
+let currentDirHandle=null;
+
+// IndexedDB for persisting directory handles per workspace
+function idbOpen(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open('ogref_handles',1);
+    req.onupgradeneeded=()=>req.result.createObjectStore('handles');
+    req.onsuccess=()=>res(req.result);
+    req.onerror=()=>rej(req.error);
+  });
+}
+async function idbSaveHandle(wsId,handle){
+  const idb=await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx=idb.transaction('handles','readwrite');
+    tx.objectStore('handles').put(handle,wsId);
+    tx.oncomplete=()=>res();
+    tx.onerror=()=>rej(tx.error);
+  });
+}
+async function idbGetHandle(wsId){
+  const idb=await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx=idb.transaction('handles','readonly');
+    const req=tx.objectStore('handles').get(wsId);
+    req.onsuccess=()=>res(req.result||null);
+    req.onerror=()=>rej(req.error);
+  });
+}
+
+async function loadFolderHandle(dirHandle, showList){
+  currentDirHandle=dirHandle;
+  const videoExts=['mp4','mov','avi','mkv','webm','m4v','wmv','flv'];
+  const files=[];
+  for await(const entry of dirHandle.values()){
+    if(entry.kind==='file'){
+      const ext=entry.name.split('.').pop().toLowerCase();
+      if(videoExts.includes(ext))files.push(entry);
+    }
+  }
+  localFileHandles={};
+  files.forEach(fh=>{localFileHandles[fh.name]=fh});
+  // Re-render grid so local autoplay can pick up handles
+  renderGrid();
+  if(showList){
+    const list=document.getElementById('localFileList');
+    if(!files.length){list.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:20px">動画ファイルが見つかりませんでした</div>';return}
+    list.innerHTML='';
+    for(const fileHandle of files){
+      const row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2)';
+      row.innerHTML=`
+        <span style="font-size:18px">🎬</span>
+        <span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${fileHandle.name}</span>
+        <button class="btn btn-ghost" onclick="previewLocalFile('${fileHandle.name}')" style="font-size:11px;padding:4px 8px">▶ プレビュー</button>
+        <button class="btn btn-primary" onclick="addLocalFile('${fileHandle.name}')" style="font-size:11px;padding:4px 8px">＋ 追加</button>`;
+      list.appendChild(row);
+    }
+  }
+}
+
+// Called on workspace enter — try to auto-restore folder
+async function tryRestoreFolder(){
+  if(!window.showDirectoryPicker||!currentWsId)return;
+  try{
+    const handle=await idbGetHandle(currentWsId);
+    if(!handle)return;
+    // Verify permission
+    const perm=await handle.queryPermission({mode:'read'});
+    if(perm==='granted'){
+      await loadFolderHandle(handle,false);
+      notify('ローカルフォルダを復元しました');
+    } else {
+      // Need re-grant: show a small prompt button
+      showFolderReconnect(handle);
+    }
+  }catch(e){}
+}
+
+function showFolderReconnect(handle){
+  const n=document.getElementById('notification');
+  n.innerHTML='ローカルフォルダの再接続が必要です &nbsp;<button id="reconnectBtn" style="background:var(--accent);color:#fff;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px;pointer-events:auto">接続</button>';
+  n.style.display='block';n.style.pointerEvents='auto';
+  document.getElementById('reconnectBtn').onclick=async()=>{
+    try{
+      const perm=await handle.requestPermission({mode:'read'});
+      if(perm==='granted'){
+        await loadFolderHandle(handle,false);
+        notify('ローカルフォルダを接続しました');
+      }
+    }catch(e){notify('接続失敗')}
+  };
+  setTimeout(()=>{n.style.pointerEvents='none'},8000);
+}
 
 window.openLocalFolder=function(){
   if(!window.showDirectoryPicker){
@@ -1425,29 +1521,11 @@ window.openLocalFolder=function(){
 window.selectLocalFolder=async function(){
   try{
     const dirHandle=await window.showDirectoryPicker({mode:'read'});
-    const list=document.getElementById('localFileList');
-    list.innerHTML='<div style="font-size:12px;color:var(--text3)">読み込み中...</div>';
-    const videoExts=['mp4','mov','avi','mkv','webm','m4v','wmv','flv'];
-    const files=[];
-    for await(const entry of dirHandle.values()){
-      if(entry.kind==='file'){
-        const ext=entry.name.split('.').pop().toLowerCase();
-        if(videoExts.includes(ext))files.push(entry);
-      }
-    }
-    if(!files.length){list.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:20px">動画ファイルが見つかりませんでした</div>';return}
-    list.innerHTML='';
-    for(const fileHandle of files){
-      const row=document.createElement('div');
-      row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2)';
-      row.innerHTML=`
-        <span style="font-size:18px">🎬</span>
-        <span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${fileHandle.name}</span>
-        <button class="btn btn-ghost" onclick="previewLocalFile('${fileHandle.name}')" style="font-size:11px;padding:4px 8px">▶ プレビュー</button>
-        <button class="btn btn-primary" onclick="addLocalFile('${fileHandle.name}')" style="font-size:11px;padding:4px 8px">＋ 追加</button>`;
-      localFileHandles[fileHandle.name]=fileHandle;
-      list.appendChild(row);
-    }
+    document.getElementById('localFileList').innerHTML='<div style="font-size:12px;color:var(--text3)">読み込み中...</div>';
+    await loadFolderHandle(dirHandle,true);
+    // Save handle for this workspace
+    if(currentWsId)await idbSaveHandle(currentWsId,dirHandle);
+    notify('フォルダを登録しました（次回から自動接続）');
   }catch(e){
     if(e.name!=='AbortError')notify('フォルダの読み込みに失敗しました: '+e.message);
   }
