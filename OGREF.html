@@ -145,13 +145,15 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .vcard-overlay-meta{display:flex;flex-wrap:wrap;gap:3px}
 .vcard-overlay-tag{padding:1px 5px;border-radius:8px;font-size:10px;background:rgba(255,255,255,.15);color:rgba(255,255,255,.85)}
 .vcard-overlay-note{font-size:10px;color:rgba(255,255,255,.6);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-.vcard-badge{position:absolute;top:8px;left:8px;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:500;letter-spacing:.5px;z-index:3}
-.badge-yt{background:#ff0000;color:#fff}
-.badge-vm{background:#1ab7ea;color:#fff}
-.badge-nc{background:#666;color:#fff}
-.badge-x{background:#000;color:#fff}
-.badge-gd{background:#1a73e8;color:#fff}
-.badge-local{background:#2a9d5c;color:#fff}
+.vcard-badge{position:absolute;top:6px;left:6px;padding:2px 5px;border-radius:3px;font-size:9px;font-weight:500;letter-spacing:.3px;z-index:3;opacity:.6;backdrop-filter:blur(4px);transition:opacity .15s}
+.vcard:hover .vcard-badge{opacity:.9}
+.badge-yt{background:rgba(255,0,0,.7);color:#fff}
+.badge-vm{background:rgba(26,183,234,.7);color:#fff}
+.badge-nc{background:rgba(100,100,100,.7);color:#fff}
+.badge-x{background:rgba(0,0,0,.7);color:#fff}
+.badge-gd{background:rgba(26,115,232,.7);color:#fff}
+.badge-local{background:rgba(42,157,92,.7);color:#fff}
+.badge-ig{background:rgba(195,42,163,.7);color:#fff}
 .vcard-actions{position:absolute;top:6px;right:6px;display:flex;gap:4px;opacity:0;transition:opacity .15s;z-index:4}
 .vcard:hover .vcard-actions{opacity:1}
 .vcard-act-btn{width:26px;height:26px;border-radius:5px;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;transition:all .15s}
@@ -199,6 +201,9 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .tag-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:11px;background:var(--bg4);border:1px solid var(--border)}
 .tag-pill button{font-size:11px;color:var(--text3)}
 .tag-pill button:hover{color:var(--red)}
+.tag-suggest-wrap{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.tag-suggest{padding:3px 8px;border-radius:12px;font-size:11px;background:var(--bg4);color:var(--text3);cursor:pointer;border:1px solid var(--border);transition:all .15s}
+.tag-suggest:hover{color:var(--text);border-color:var(--border2)}
 .color-picker{display:flex;gap:6px;flex-wrap:wrap}
 .color-opt{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:.1s}
 .color-opt.selected,.color-opt:hover{border-color:#fff}
@@ -338,6 +343,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
       <div class="nav-item" onclick="setFilter('vm',this)"><span class="ni-icon">🎬</span>Vimeo<span class="badge" id="badge-vm">0</span></div>
       <div class="nav-item" onclick="setFilter('nc',this)"><span class="ni-icon">🎴</span>ニコニコ<span class="badge" id="badge-nc">0</span></div>
       <div class="nav-item" onclick="setFilter('x',this)"><span class="ni-icon">✖️</span>X (Twitter)<span class="badge" id="badge-x">0</span></div>
+      <div class="nav-item" onclick="setFilter('ig',this)"><span class="ni-icon">📷</span>Instagram<span class="badge" id="badge-ig">0</span></div>
       <div class="nav-item" onclick="setFilter('gd',this)"><span class="ni-icon">📂</span>Google Drive<span class="badge" id="badge-gd">0</span></div>
       <div class="nav-item" onclick="setFilter('local',this)"><span class="ni-icon">💾</span>ローカル<span class="badge" id="badge-local">0</span></div>
     </div>
@@ -404,6 +410,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
         <div class="tags-input-wrap" id="tagsInputWrap">
           <input type="text" id="tagInput" placeholder="タグを入力..." onkeydown="handleTagInput(event)">
         </div>
+        <div class="tag-suggest-wrap" id="tagSuggestions"></div>
       </div>
       <div class="form-row">
         <label class="form-label">開始時間（例: 1:30 または 90）</label>
@@ -924,6 +931,7 @@ function detectPlatform(url){
   if(/vimeo\.com/.test(url))return'vm';
   if(/nicovideo\.jp|nico\.ms/.test(url))return'nc';
   if(/twitter\.com|x\.com/.test(url))return'x';
+  if(/instagram\.com|instagr\.am/.test(url))return'ig';
   if(/drive\.google\.com/.test(url))return'gd';
   return'other';
 }
@@ -940,7 +948,7 @@ function getThumb(v){
   if(v.platform==='gd'&&v.vid)return`https://drive.google.com/thumbnail?id=${v.vid}&sz=w400`;
   return'';
 }
-function platformLabel(p){return{yt:'YouTube',vm:'Vimeo',nc:'ニコニコ',x:'X',gd:'Drive',local:'ローカル'}[p]||'OTHER'}
+function platformLabel(p){return{yt:'YouTube',vm:'Vimeo',nc:'ニコニコ',x:'X',ig:'Instagram',gd:'Drive',local:'ローカル'}[p]||'OTHER'}
 function platformClass(p){return'badge-'+(p||'yt')}
 // badge-gd defined in CSS
 
@@ -959,6 +967,7 @@ window.parseUrl=async function(){
     }catch(e){}
   }else if(p==='nc'){if(!ti.value)ti.value='(ニコニコ動画)'}
   else if(p==='x'){if(!ti.value)ti.value='(X投稿)'}
+  else if(p==='ig'){if(!ti.value)ti.value='(Instagram投稿)'}
   else if(p==='gd'){if(!ti.value)ti.value='(Googleドライブ動画)'}
   notify('URL解析完了');
 }
@@ -975,7 +984,24 @@ window.openAddModal=function(id=null){
   if(v&&v.tags)state.currentTags=[...v.tags];
   renderTagPills();
   populateFolderSelect(v?v.folder||'':'');
+  renderTagSuggestions();
   document.getElementById('addModal').classList.remove('hidden');
+}
+
+function renderTagSuggestions(){
+  const el=document.getElementById('tagSuggestions');
+  const allTags=[...new Set(videos.flatMap(v=>v.tags||[]))].sort();
+  el.innerHTML='';
+  allTags.forEach(t=>{
+    if(state.currentTags.includes(t))return;
+    const chip=document.createElement('span');
+    chip.className='tag-suggest';
+    chip.textContent=t;
+    chip.onclick=()=>{
+      if(!state.currentTags.includes(t)){state.currentTags.push(t);renderTagPills();renderTagSuggestions();}
+    };
+    el.appendChild(chip);
+  });
 }
 
 function populateFolderSelect(sel=''){
@@ -1008,7 +1034,7 @@ function renderTagPills(){
     wrap.insertBefore(p,inp);
   });
 }
-window.removeTag=function(t){state.currentTags=state.currentTags.filter(x=>x!==t);renderTagPills()}
+window.removeTag=function(t){state.currentTags=state.currentTags.filter(x=>x!==t);renderTagPills();renderTagSuggestions()}
 
 window.saveVideo=async function(){
   const url=document.getElementById('videoUrl').value.trim();
@@ -1046,7 +1072,7 @@ window.toggleFav=async function(id){
 }
 
 function getPlayerEmbedUrl(v){
-  if(v.platform==='local')return null;
+  if(v.platform==='local'||v.platform==='ig')return null;
   const s=v.startTime||0;
   if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&rel=0&modestbranding=1${s?`&start=${s}`:''}`;
   if(v.platform==='vm'&&v.vid)return`https://player.vimeo.com/video/${v.vid}?autoplay=1${s?`#t=${s}s`:''}`;
@@ -1116,7 +1142,7 @@ function getFiltered(){
     if(state.folder&&v.folder!==state.folder)return false;
     if(state.tag&&!(v.tags||[]).includes(state.tag))return false;
     if(state.filter==='fav'&&!v.fav)return false;
-    if(['yt','vm','nc','x','gd','local'].includes(state.filter)&&v.platform!==state.filter)return false;
+    if(['yt','vm','nc','x','ig','gd','local'].includes(state.filter)&&v.platform!==state.filter)return false;
     if(q&&!v.title.toLowerCase().includes(q)&&!(v.tags||[]).join(' ').toLowerCase().includes(q))return false;
     return true;
   }).sort((a,b)=>{
@@ -1140,7 +1166,7 @@ let gridObserver=null;
 function getEmbedUrl(v){
   if(!autoplayEnabled)return null;
   if(v.platform==='local')return v.url; // handled specially in observer
-  if(v.platform==='x')return null;
+  if(v.platform==='x'||v.platform==='ig')return null;
   const s=v.startTime||0;
   if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&loop=1&playlist=${v.vid}${s?`&start=${s}`:''}`;
   if(v.platform==='vm'&&v.vid)return`https://player.vimeo.com/video/${v.vid}?autoplay=1&muted=1&controls=0&loop=1${s?`#t=${s}s`:''}`;
@@ -1326,7 +1352,7 @@ function renderGrid(){
 function renderSidebar(){
   document.getElementById('badge-all').textContent=videos.length;
   document.getElementById('badge-fav').textContent=videos.filter(v=>v.fav).length;
-  ['yt','vm','nc','x','gd','local'].forEach(p=>{
+  ['yt','vm','nc','x','ig','gd','local'].forEach(p=>{
     const el=document.getElementById('badge-'+p);
     if(el)el.textContent=videos.filter(v=>v.platform===p).length;
   });
@@ -1626,21 +1652,30 @@ window.selectLocalFolder=async function(){
 }
 
 window.previewLocalFile=async function(name){
-  const handle=localFileHandles[name];
+  const handle=localFileHandles[name]||localFileHandles[name.split('/').pop()];
   if(!handle){notify('ファイルが見つかりません。フォルダを再選択してください。');return}
   const file=await handle.getFile();
   const url=URL.createObjectURL(file);
   const modal=document.getElementById('playerModal');
   const wrap=document.getElementById('playerIframeWrap');
-  // Use video tag instead of iframe for local files
   wrap.innerHTML=`<video src="${url}" controls autoplay style="position:absolute;inset:0;width:100%;height:100%;background:#000" onended="URL.revokeObjectURL('${url}')"></video>`;
   wrap.style.display='block';
-  document.getElementById('playerTitle').textContent=name;
-  document.getElementById('playerMeta').innerHTML='<span class="vcard-badge badge-local" style="position:static">ローカル</span>';
+  const displayName=name.split('/').pop();
+  const folderPath=currentDirHandle?currentDirHandle.name+(name.includes('/')?'  /  '+name.split('/')[0]:''):'';
+  document.getElementById('playerTitle').textContent=displayName;
+  document.getElementById('playerMeta').innerHTML=
+    `<span class="vcard-badge badge-local" style="position:static">ローカル</span>`+
+    (folderPath?`<span style="cursor:pointer" onclick="copyPath('${name}')" title="クリックでコピー">📁 ${folderPath} / ${displayName}</span>`:'');
   document.getElementById('playerNote').style.display='none';
   document.getElementById('playerTags').innerHTML='';
   closeModal('localModal');
   modal.classList.remove('hidden');
+}
+
+window.copyPath=function(name){
+  const folderName=currentDirHandle?currentDirHandle.name:'';
+  const path=folderName+'/'+name;
+  navigator.clipboard.writeText(path).then(()=>notify('パスをコピーしました: '+path));
 }
 
 window.addLocalFile=async function(name){
@@ -1671,7 +1706,22 @@ window.openPlayer=function(id){
     const name=v.url.replace('local:','');
     const handle=localFileHandles[name]||localFileHandles[name.split('/').pop()];
     if(!handle){
-      notify('ローカルファイルが見つかりません。💾 ローカルボタンからフォルダを再選択してください。');
+      // Show info even without handle
+      const modal=document.getElementById('playerModal');
+      const wrap=document.getElementById('playerIframeWrap');
+      wrap.innerHTML='';wrap.style.display='none';
+      const displayName=name.split('/').pop();
+      const subFolder=name.includes('/')?name.split('/')[0]:'';
+      document.getElementById('playerTitle').textContent=v.title||displayName;
+      document.getElementById('playerMeta').innerHTML=
+        `<span class="vcard-badge badge-local" style="position:static">ローカル</span>`+
+        `<span>📁 ${subFolder?subFolder+' / ':''}${displayName}</span>`+
+        `<br><span style="font-size:11px;color:var(--amber)">⚠ フォルダ未接続のため再生できません。💾 ローカルボタンからフォルダを再選択してください。</span>`;
+      const ni=document.getElementById('playerNote');
+      if(v.note){ni.textContent=v.note;ni.style.display='block'}else{ni.style.display='none'}
+      document.getElementById('playerTags').innerHTML=(v.tags||[]).map(t=>`<span class="vcard-tag">${t}</span>`).join('');
+      state.currentPlayId=v.id;
+      modal.classList.remove('hidden');
       return;
     }
     previewLocalFile(name);
