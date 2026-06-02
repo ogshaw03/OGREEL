@@ -1133,7 +1133,8 @@ window.toggleAutoplay=function(){
 let gridObserver=null;
 function getEmbedUrl(v){
   if(!autoplayEnabled)return null;
-  if(v.platform==='x'||v.platform==='local')return null;
+  if(v.platform==='local')return v.url; // handled specially in observer
+  if(v.platform==='x')return null;
   const s=v.startTime||0;
   if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&loop=1&playlist=${v.vid}${s?`&start=${s}`:''}`;
   if(v.platform==='vm'&&v.vid)return`https://player.vimeo.com/video/${v.vid}?autoplay=1&muted=1&controls=0&loop=1${s?`#t=${s}s`:''}`;
@@ -1151,13 +1152,34 @@ function setupObserver(){
       const thumb=entry.target.querySelector('img');
       if(!pc||!embUrl)return;
       if(entry.isIntersecting){
-        if(!pc.querySelector('iframe')){
+        if(platform==='local'){
+          if(!pc.querySelector('video')){
+            const name=embUrl.replace('local:','');
+            const handle=localFileHandles[name];
+            if(handle){
+              handle.getFile().then(file=>{
+                if(pc.querySelector('video'))return;
+                const objUrl=URL.createObjectURL(file);
+                const video=document.createElement('video');
+                video.src=objUrl;
+                video.muted=true;
+                video.loop=true;
+                video.autoplay=true;
+                video.playsInline=true;
+                video.style.cssText='width:100%;height:100%;object-fit:cover';
+                video.addEventListener('loadeddata',()=>{if(thumb)thumb.style.opacity='0'});
+                pc._objUrl=objUrl;
+                pc.appendChild(video);
+                video.play().catch(()=>{});
+              });
+            }
+          }
+        } else if(!pc.querySelector('iframe')){
           const iframe=document.createElement('iframe');
           iframe.src=embUrl;
           iframe.allowFullscreen=true;
           iframe.allow='autoplay';
           iframe.style.cssText='opacity:0;width:100%;height:100%;border:none';
-          // Show iframe after 1s regardless of load event (GD doesn't always fire it)
           const showIframe=()=>{
             iframe.style.opacity='1';
             if(thumb)thumb.style.opacity='0';
@@ -1174,6 +1196,7 @@ function setupObserver(){
         }
       }else{
         if(pc._loopTimer){clearInterval(pc._loopTimer);delete pc._loopTimer;}
+        if(pc._objUrl){URL.revokeObjectURL(pc._objUrl);delete pc._objUrl;}
         if(thumb)thumb.style.opacity='1';
         pc.innerHTML='';
       }
