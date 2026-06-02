@@ -372,7 +372,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
         <span id="autoplayIcon">▶</span><span id="autoplayLabel">自動再生 ON</span>
       </button>
     </div>
-    <div class="grid-wrap"><div class="video-grid" id="videoGrid"></div></div>
+    <div class="grid-wrap" id="gridWrap"><div class="video-grid" id="videoGrid"></div></div>
   </div>
 </div>
 
@@ -506,7 +506,11 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
         ※ ページを更新するとローカルファイルは再生できなくなります（再度フォルダを選択してください）<br>
         ※ Chrome推奨。登録したローカル動画は自分のPC以外では再生できません。
       </div>
-      <button class="btn btn-primary" onclick="selectLocalFolder()" style="margin-bottom:16px">📁 フォルダを選択</button>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button class="btn btn-primary" onclick="selectLocalFolder()">📁 フォルダを選択</button>
+        <button class="btn btn-ghost" onclick="disconnectLocalFolder()" id="disconnectBtn" style="display:none;color:var(--red)">🗑 接続解除＆全削除</button>
+      </div>
+      <div id="localFolderStatus" style="font-size:12px;color:var(--text3);margin-bottom:12px"></div>
       <div id="localFileList" style="display:flex;flex-direction:column;gap:6px;max-height:360px;overflow-y:auto"></div>
     </div>
   </div>
@@ -1273,8 +1277,9 @@ function renderGrid(){
     setupObserver();return;
   }
   const sort=document.getElementById('sortSelect').value;
+  const grouped=(sort==='folder'||sort==='platform'||sort==='tag');
 
-  if(sort==='folder'||sort==='platform'||sort==='tag'){
+  if(grouped){
     let groups=[];
     if(sort==='folder'){
       const folderMap={};
@@ -1283,13 +1288,12 @@ function renderGrid(){
         if(!folderMap[key])folderMap[key]=[];
         folderMap[key].push(v);
       });
-      // named folders first, then no folder
       folders.forEach(f=>{
         if(folderMap[f.id])groups.push({label:'📁 '+f.name,items:folderMap[f.id]});
       });
       if(folderMap['__none'])groups.push({label:'フォルダなし',items:folderMap['__none']});
     } else if(sort==='platform'){
-      const order=['yt','vm','nc','x','gd','other'];
+      const order=['yt','vm','nc','x','gd','local','other'];
       const platMap={};
       list.forEach(v=>{const k=v.platform||'other';if(!platMap[k])platMap[k]=[];platMap[k].push(v);});
       order.forEach(p=>{if(platMap[p])groups.push({label:platformLabel(p),items:platMap[p]});});
@@ -1566,7 +1570,47 @@ window.openLocalFolder=function(){
     notify('このブラウザはFile System Access APIに対応していません。Chromeをお使いください。');
     return;
   }
+  // Show current status
+  const localCount=videos.filter(v=>v.platform==='local').length;
+  const status=document.getElementById('localFolderStatus');
+  const btn=document.getElementById('disconnectBtn');
+  if(currentDirHandle||localCount>0){
+    status.textContent=`現在の登録: ローカル動画 ${localCount}件${currentDirHandle?' / フォルダ接続中':' / フォルダ未接続'}`;
+    btn.style.display='';
+  } else {
+    status.textContent='';
+    btn.style.display='none';
+  }
   document.getElementById('localModal').classList.remove('hidden');
+}
+
+window.disconnectLocalFolder=async function(){
+  const localVids=videos.filter(v=>v.platform==='local');
+  const msg=`ローカルフォルダの接続を解除し、ローカル動画 ${localVids.length}件 をすべて削除しますか？
+
+この操作は元に戻せません。`;
+  if(!confirm(msg))return;
+  notify('削除中...');
+  try{
+    // Delete all local videos from Firestore
+    for(const v of localVids){
+      await deleteDoc(doc(db,'workspaces',currentWsId,'videos',v.id));
+    }
+    // Remove IndexedDB handle
+    if(currentWsId){
+      try{
+        const idb=await idbOpen();
+        const tx=idb.transaction('handles','readwrite');
+        tx.objectStore('handles').delete(currentWsId);
+      }catch(e){}
+    }
+    // Clear local state
+    localFileHandles={};
+    currentDirHandle=null;
+    window._localScan=null;
+    closeModal('localModal');
+    notify('ローカルフォルダを解除し、動画をすべて削除しました');
+  }catch(e){notify('削除失敗: '+e.message)}
 }
 
 window.selectLocalFolder=async function(){
