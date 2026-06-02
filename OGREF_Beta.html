@@ -402,6 +402,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
       <div class="right-panel-note" id="rpNote" style="display:none"></div>
       <div class="right-panel-tags" id="rpTags"></div>
       <div class="right-panel-actions">
+        <button class="btn btn-primary" onclick="expandToModal()" style="font-size:12px">⛶ 拡大表示</button>
         <button class="btn btn-ghost" onclick="editFromPanel()" style="font-size:12px">✏️ 編集</button>
         <button class="btn btn-ghost" onclick="openPanelUrl()" style="font-size:12px">↗ 元ページ</button>
         <span id="rpQualityBtns"></span>
@@ -1878,6 +1879,48 @@ window.closeRightPanel=function(){
   const player=document.getElementById('rpPlayer');
   player.innerHTML='';
   panel.classList.remove('open');
+}
+
+window.expandToModal=function(){
+  const v=videos.find(x=>x.id===state.currentPlayId);if(!v)return;
+  const modal=document.getElementById('playerModal');
+  const wrap=document.getElementById('playerIframeWrap');
+
+  if(v.platform==='local'){
+    const name=v.url.replace('local:','');
+    const lowName=name.replace(/\.[^.]+$/,'.mp4');
+    const origHandle=localFileHandles[name]||localFileHandles[name.split('/').pop()];
+    const lowHandle=localLowHandles[lowName]||localLowHandles[lowName.split('/').pop()];
+    const handle=origHandle||lowHandle;
+    if(handle){
+      handle.getFile().then(file=>{
+        const url=URL.createObjectURL(file);
+        wrap.innerHTML=`<video src="${url}" controls autoplay style="position:absolute;inset:0;width:100%;height:100%;background:#000"></video>`;
+        wrap.style.display='block';
+      });
+    } else {
+      wrap.innerHTML='';wrap.style.display='none';
+    }
+  } else {
+    const embedUrl=getPlayerEmbedUrl(v);
+    if(embedUrl){
+      wrap.innerHTML=`<iframe src="${embedUrl}" allowfullscreen allow="autoplay" style="position:absolute;inset:0;width:100%;height:100%;border:none"></iframe>`;
+      wrap.style.display='block';
+    } else {
+      wrap.innerHTML='';wrap.style.display='none';
+    }
+  }
+
+  const folder=v.folder?folders.find(f=>f.id===v.folder):null;
+  document.getElementById('playerTitle').textContent=v.title||'無題';
+  document.getElementById('playerMeta').innerHTML=
+    `<span class="vcard-badge ${platformClass(v.platform)}" style="position:static">${platformLabel(v.platform)}</span>`+
+    (folder?`<span>📁 ${folder.name}</span>`:'')+
+    (v.addedByName?`<span>👤 ${v.addedByName}</span>`:'');
+  const ni=document.getElementById('playerNote');
+  if(v.note){ni.textContent=v.note;ni.style.display='block'}else{ni.style.display='none'}
+  document.getElementById('playerTags').innerHTML=(v.tags||[]).map(t=>`<span class="vcard-tag">${t}</span>`).join('');
+  modal.classList.remove('hidden');
 }
 
 window.editFromPanel=function(){openAddModal(state.currentPlayId)}
