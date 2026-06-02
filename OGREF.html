@@ -1157,7 +1157,7 @@ function setupObserver(){
         if(platform==='local'){
           if(!pc.querySelector('video')){
             const name=embUrl.replace('local:','');
-            const handle=localFileHandles[name];
+            const handle=localFileHandles[name]||localFileHandles[name.split('/').pop()];
             if(handle){
               handle.getFile().then(file=>{
                 if(pc.querySelector('video'))return;
@@ -1448,32 +1448,82 @@ async function idbGetHandle(wsId){
 async function loadFolderHandle(dirHandle, showList){
   currentDirHandle=dirHandle;
   const videoExts=['mp4','mov','avi','mkv','webm','m4v','wmv','flv'];
-  const files=[];
+  const isVideo=name=>videoExts.includes(name.split('.').pop().toLowerCase());
+  // Structure: {root:[fileHandles], subfolders:{name:[fileHandles]}}
+  const rootFiles=[];
+  const subfolders={};
+  localFileHandles={};
   for await(const entry of dirHandle.values()){
-    if(entry.kind==='file'){
-      const ext=entry.name.split('.').pop().toLowerCase();
-      if(videoExts.includes(ext))files.push(entry);
+    if(entry.kind==='file'&&isVideo(entry.name)){
+      rootFiles.push(entry);
+      localFileHandles[entry.name]=entry;
+    } else if(entry.kind==='directory'){
+      const subFiles=[];
+      for await(const sub of entry.values()){
+        if(sub.kind==='file'&&isVideo(sub.name)){
+          subFiles.push(sub);
+          // key by foldername/filename to avoid collisions
+          localFileHandles[entry.name+'/'+sub.name]=sub;
+          localFileHandles[sub.name]=sub;
+        }
+      }
+      if(subFiles.length)subfolders[entry.name]=subFiles;
     }
   }
-  localFileHandles={};
-  files.forEach(fh=>{localFileHandles[fh.name]=fh});
-  // Re-render grid so local autoplay can pick up handles
+  window._localScan={rootFiles,subfolders};
   renderGrid();
   if(showList){
     const list=document.getElementById('localFileList');
-    if(!files.length){list.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:20px">動画ファイルが見つかりませんでした</div>';return}
-    list.innerHTML='';
-    for(const fileHandle of files){
-      const row=document.createElement('div');
-      row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2)';
-      row.innerHTML=`
-        <span style="font-size:18px">🎬</span>
-        <span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${fileHandle.name}</span>
-        <button class="btn btn-ghost" onclick="previewLocalFile('${fileHandle.name}')" style="font-size:11px;padding:4px 8px">▶ プレビュー</button>
-        <button class="btn btn-primary" onclick="addLocalFile('${fileHandle.name}')" style="font-size:11px;padding:4px 8px">＋ 追加</button>`;
-      list.appendChild(row);
-    }
+    const total=rootFiles.length+Object.values(subfolders).reduce((a,b)=>a+b.length,0);
+    if(!total){list.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:20px">動画ファイルが見つかりませんでした</div>';return}
+    list.innerHTML=`<div style="font-size:13px;color:var(--text2);margin-bottom:10px">動画 ${total}件 / サブフォルダ ${Object.keys(subfolders).length}個 を検出しました</div>
+      <button class="btn btn-primary" onclick="importLocalAll()" style="width:100%;justify-content:center;margin-bottom:14px">📥 フォルダ構成ごと一括登録</button>
+      <div style="font-size:11px;color:var(--text3)">サブフォルダ名がアプリのフォルダとして作成され、各動画が振り分けられます。</div>`;
   }
+}
+
+window.importLocalAll=async function(silent){
+  const scan=window._localScan;
+  if(!scan){if(!silent)notify('先にフォルダを選択してください');return}
+  if(!silent)notify('登録中...');
+  try{
+    // Map: subfolder name -> appFolderId
+    const folderMap={};
+    let colorIdx=0;
+    for(const folderName of Object.keys(scan.subfolders)){
+      // Reuse existing folder if same name
+      let existing=folders.find(f=>f.name===folderName);
+      if(existing){folderMap[folderName]=existing.id;continue;}
+      const ref=await addDoc(collection(db,'workspaces',currentWsId,'folders'),{name:folderName,color:COLORS[colorIdx%COLORS.length],createdAt:Date.now()});
+      folderMap[folderName]=ref.id;
+      colorIdx++;
+    }
+    // Existing local urls to avoid duplicates
+    const existingUrls=new Set(videos.filter(v=>v.platform==='local').map(v=>v.url));
+    // Root files (no folder)
+    for(const fh of scan.rootFiles){
+      const url='local:'+fh.name;
+      if(existingUrls.has(url))continue;
+      await addDoc(collection(db,'workspaces',currentWsId,'videos'),{
+        url,vid:null,platform:'local',title:fh.name.replace(/\.[^.]+$/,''),
+        tags:[],folder:'',note:'',thumb:'',startTime:0,fav:false,
+        createdAt:Date.now(),addedBy:currentUser.uid,addedByName:currentUser.displayName||''
+      });
+    }
+    // Subfolder files
+    for(const [folderName,files] of Object.entries(scan.subfolders)){
+      for(const fh of files){
+        const url='local:'+folderName+'/'+fh.name;
+        if(existingUrls.has(url))continue;
+        await addDoc(collection(db,'workspaces',currentWsId,'videos'),{
+          url,vid:null,platform:'local',title:fh.name.replace(/\.[^.]+$/,''),
+          tags:[],folder:folderMap[folderName]||'',note:'',thumb:'',startTime:0,fav:false,
+          createdAt:Date.now(),addedBy:currentUser.uid,addedByName:currentUser.displayName||''
+        });
+      }
+    }
+    if(!silent){closeModal('localModal');notify('フォルダ構成ごと登録しました');}
+  }catch(e){if(!silent)notify('登録失敗: '+e.message)}
 }
 
 // Called on workspace enter — try to auto-restore folder
@@ -1486,6 +1536,7 @@ async function tryRestoreFolder(){
     const perm=await handle.queryPermission({mode:'read'});
     if(perm==='granted'){
       await loadFolderHandle(handle,false);
+      await importLocalAll(true);
       notify('ローカルフォルダを復元しました');
     } else {
       // Need re-grant: show a small prompt button
@@ -1523,9 +1574,9 @@ window.selectLocalFolder=async function(){
     const dirHandle=await window.showDirectoryPicker({mode:'read'});
     document.getElementById('localFileList').innerHTML='<div style="font-size:12px;color:var(--text3)">読み込み中...</div>';
     await loadFolderHandle(dirHandle,true);
-    // Save handle for this workspace
     if(currentWsId)await idbSaveHandle(currentWsId,dirHandle);
-    notify('フォルダを登録しました（次回から自動接続）');
+    // Auto-import all videos with folder structure
+    await importLocalAll();
   }catch(e){
     if(e.name!=='AbortError')notify('フォルダの読み込みに失敗しました: '+e.message);
   }
@@ -1575,7 +1626,7 @@ window.openPlayer=function(id){
   const v=videos.find(x=>x.id===id);
   if(v&&v.platform==='local'){
     const name=v.url.replace('local:','');
-    const handle=localFileHandles[name];
+    const handle=localFileHandles[name]||localFileHandles[name.split('/').pop()];
     if(!handle){
       notify('ローカルファイルが見つかりません。💾 ローカルボタンからフォルダを再選択してください。');
       return;
