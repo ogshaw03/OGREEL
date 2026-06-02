@@ -1441,8 +1441,8 @@ window.deleteFolder=async function(id,name){
 window.closeModal=function(id){
   document.getElementById(id).classList.add('hidden');
   if(id==='playerModal'){
-    const iframe=document.getElementById('playerIframe');
-    if(iframe)iframe.src='';
+    const wrap=document.getElementById('playerIframeWrap');
+    if(wrap)wrap.innerHTML='';
   }
 }
 window.closeModalBg=function(e,id){if(e.target.classList.contains('modal-bg'))closeModal(id)}
@@ -1722,7 +1722,7 @@ window.previewLocalFile=async function(name, forceHD){
   const url=URL.createObjectURL(file);
   const modal=document.getElementById('playerModal');
   const wrap=document.getElementById('playerIframeWrap');
-  wrap.innerHTML=`<video src="${url}" controls autoplay style="position:absolute;inset:0;width:100%;height:100%;background:#000"></video>`;
+  wrap.innerHTML=`<video src="${url}" controls autoplay preload="auto" style="position:absolute;inset:0;width:100%;height:100%;background:#000"></video>`;
   wrap.style.display='block';
   const displayName=name.split('/').pop();
   const rootName=currentDirHandle?currentDirHandle.name:'';
