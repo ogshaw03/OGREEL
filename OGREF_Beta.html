@@ -539,7 +539,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
     </div>
     <div class="modal-body">
       <div class="form-row" style="margin-bottom:10px">
-        <label class="form-label">Explorer用ベースパス（初回のみ入力）</label>
+        <label class="form-label">Explorer用ベースパス（作成者のみ変更可・全メンバー共有）</label>
         <input type="text" class="form-input" id="localBasePath" placeholder="例: D:\Reference\動画" style="font-family:monospace;font-size:12px" onchange="saveBasePath()">
         <div style="font-size:11px;color:var(--text3);margin-top:4px">選択したフォルダの絶対パスを入力するとExplorerで開くが使えます</div>
       </div>
@@ -909,6 +909,7 @@ function enterWorkspace(id, name, code, color){
   document.getElementById('wsSwitcherDot').style.background=color||'#7c6fff';
   initAutoplayBtn();
   startListeners();
+  loadBasePath();
   localFileHandles={};
   localLowHandles={};
   currentLowDirHandle=null;
@@ -1938,18 +1939,40 @@ window.openPanelUrl=function(){
   if(v)window.open(v.url,'_blank');
 }
 
-window.saveBasePath=function(){
+let cachedBasePath='';
+
+window.saveBasePath=async function(){
   const val=document.getElementById('localBasePath').value.trim();
-  if(currentWsId)localStorage.setItem('ogref_basepath_'+currentWsId,val);
+  if(!currentWsId)return;
+  try{
+    await updateDoc(doc(db,'workspaces',currentWsId),{localBasePath:val});
+    cachedBasePath=val;
+    notify('ベースパスを保存しました');
+  }catch(e){notify('保存失敗: '+e.message)}
 }
 
 function getBasePath(){
-  if(!currentWsId)return'';
-  return localStorage.getItem('ogref_basepath_'+currentWsId)||'';
+  return cachedBasePath||'';
 }
 
-function loadBasePath(){
-  document.getElementById('localBasePath').value=getBasePath();
+async function loadBasePath(){
+  const input=document.getElementById('localBasePath');
+  if(!currentWsId){input.value='';return}
+  try{
+    const snap=await getDoc(doc(db,'workspaces',currentWsId));
+    const data=snap.data()||{};
+    cachedBasePath=data.localBasePath||'';
+    input.value=cachedBasePath;
+    // Only workspace creator can edit
+    const isCreator=data.createdBy===currentUser.uid;
+    if(isCreator){
+      input.removeAttribute('readonly');
+      input.style.opacity='1';
+    } else {
+      input.setAttribute('readonly',true);
+      input.style.opacity='.6';
+    }
+  }catch(e){cachedBasePath='';input.value=''}
 }
 
 window.openInExplorer=function(){
