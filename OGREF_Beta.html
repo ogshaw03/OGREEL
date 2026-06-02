@@ -126,6 +126,17 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .view-btn.active,.view-btn:hover{background:var(--bg4);color:var(--text)}
 .count-badge{font-size:12px;color:var(--text3)}
 .grid-wrap{flex:1;overflow-y:auto;padding:16px}
+.right-panel{width:0;flex-shrink:0;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .25s ease}
+.right-panel.open{width:420px}
+.right-panel-player{position:relative;padding-bottom:56.25%;background:#000;flex-shrink:0}
+.right-panel-player video,.right-panel-player iframe{position:absolute;inset:0;width:100%;height:100%;border:none}
+.right-panel-info{flex:1;overflow-y:auto;padding:12px 14px}
+.right-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.right-panel-title{font-family:var(--font-head);font-size:14px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.right-panel-meta{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);margin-bottom:8px;flex-wrap:wrap}
+.right-panel-note{background:var(--bg3);border-radius:var(--radius2);padding:8px 10px;font-size:12px;color:var(--text2);margin-bottom:8px}
+.right-panel-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.right-panel-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .video-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
 .video-grid.list-view{grid-template-columns:1fr}
 
@@ -380,6 +391,23 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
     </div>
     <div class="grid-wrap" id="gridWrap"><div class="video-grid" id="videoGrid"></div></div>
   </div>
+  <div class="right-panel" id="rightPanel">
+    <div class="right-panel-player" id="rpPlayer"></div>
+    <div class="right-panel-info">
+      <div class="right-panel-header">
+        <div class="right-panel-title" id="rpTitle"></div>
+        <button class="btn-icon" onclick="closeRightPanel()" style="font-size:14px;flex-shrink:0">✕</button>
+      </div>
+      <div class="right-panel-meta" id="rpMeta"></div>
+      <div class="right-panel-note" id="rpNote" style="display:none"></div>
+      <div class="right-panel-tags" id="rpTags"></div>
+      <div class="right-panel-actions">
+        <button class="btn btn-ghost" onclick="editFromPanel()" style="font-size:12px">✏️ 編集</button>
+        <button class="btn btn-ghost" onclick="openPanelUrl()" style="font-size:12px">↗ 元ページ</button>
+        <span id="rpQualityBtns"></span>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ADD/EDIT MODAL -->
@@ -551,6 +579,8 @@ const WS_COLORS=['#7c6fff','#5a8fff','#5affa0','#ffb85a','#ff5a5a','#ff5aaa'];
 
 let videos=[], folders=[];
 let autoplayEnabled=localStorage.getItem('ogref_autoplay')!=='false';
+const MAX_AUTOPLAY=6;
+let activeAutoplayCount=0;
 let state={filter:'all',folder:null,tag:null,view:'grid',editId:null,currentTags:[],selectedColor:'purple',currentPlayId:null};
 let currentUser=null;
 let currentWsId=null;
@@ -1179,6 +1209,7 @@ function getEmbedUrl(v){
 }
 function setupObserver(){
   if(gridObserver){gridObserver.disconnect();gridObserver=null;}
+  activeAutoplayCount=0;
   gridObserver=new IntersectionObserver(entries=>{
     entries.forEach(entry=>{
       const pc=entry.target.querySelector('.player-container');
@@ -1187,6 +1218,7 @@ function setupObserver(){
       const thumb=entry.target.querySelector('img');
       if(!pc||!embUrl)return;
       if(entry.isIntersecting){
+        if(activeAutoplayCount>=MAX_AUTOPLAY&&!pc.querySelector('video')&&!pc.querySelector('iframe'))return;
         if(platform==='local'){
           if(!pc.querySelector('video')){
             const name=embUrl.replace('local:','');
@@ -1206,6 +1238,7 @@ function setupObserver(){
                 video.addEventListener('loadeddata',()=>{if(thumb)thumb.style.opacity='0'});
                 pc._objUrl=objUrl;
                 pc.appendChild(video);
+                activeAutoplayCount++;
                 video.play().catch(()=>{});
               });
             }
@@ -1229,10 +1262,12 @@ function setupObserver(){
             }, platform==='gd'?300000:600000);
           }
           pc.appendChild(iframe);
+          activeAutoplayCount++;
         }
       }else{
         if(pc._loopTimer){clearInterval(pc._loopTimer);delete pc._loopTimer;}
         if(pc._objUrl){URL.revokeObjectURL(pc._objUrl);delete pc._objUrl;}
+        if(pc.querySelector('video')||pc.querySelector('iframe'))activeAutoplayCount=Math.max(0,activeAutoplayCount-1);
         if(thumb)thumb.style.opacity='1';
         pc.innerHTML='';
       }
@@ -1771,35 +1806,91 @@ window.addLocalFile=async function(name){
 }
 
 // Override openPlayer for local files
-const _origOpenPlayer=window.openPlayer;
 window.openPlayer=function(id){
-  const v=videos.find(x=>x.id===id);
-  if(v&&v.platform==='local'){
+  const v=videos.find(x=>x.id===id);if(!v)return;
+  state.currentPlayId=id;
+  const panel=document.getElementById('rightPanel');
+  const player=document.getElementById('rpPlayer');
+
+  if(v.platform==='local'){
     const name=v.url.replace('local:','');
-    const handle=localFileHandles[name]||localFileHandles[name.split('/').pop()];
+    const lowName=name.replace(/\.[^.]+$/,'.mp4');
+    const lowHandle=localLowHandles[lowName]||localLowHandles[lowName.split('/').pop()];
+    const origHandle=localFileHandles[name]||localFileHandles[name.split('/').pop()];
+    const handle=lowHandle||origHandle;
     if(!handle){
-      // Show info even without handle
-      const modal=document.getElementById('playerModal');
-      const wrap=document.getElementById('playerIframeWrap');
-      wrap.innerHTML='';wrap.style.display='none';
-      const displayName=name.split('/').pop();
-      const subFolder=name.includes('/')?name.split('/')[0]:'';
-      document.getElementById('playerTitle').textContent=v.title||displayName;
-      document.getElementById('playerMeta').innerHTML=
+      player.innerHTML='';
+      document.getElementById('rpTitle').textContent=v.title||name.split('/').pop();
+      document.getElementById('rpMeta').innerHTML=
         `<span class="vcard-badge badge-local" style="position:static">ローカル</span>`+
-        `<span>📁 ${subFolder?subFolder+' / ':''}${displayName}</span>`+
-        `<br><span style="font-size:11px;color:var(--amber)">⚠ フォルダ未接続のため再生できません。💾 ローカルボタンからフォルダを再選択してください。</span>`;
-      const ni=document.getElementById('playerNote');
-      if(v.note){ni.textContent=v.note;ni.style.display='block'}else{ni.style.display='none'}
-      document.getElementById('playerTags').innerHTML=(v.tags||[]).map(t=>`<span class="vcard-tag">${t}</span>`).join('');
-      state.currentPlayId=v.id;
-      modal.classList.remove('hidden');
+        `<span style="color:var(--amber)">フォルダ未接続</span>`;
+      document.getElementById('rpNote').style.display='none';
+      document.getElementById('rpTags').innerHTML='';
+      document.getElementById('rpQualityBtns').innerHTML='';
+      panel.classList.add('open');
       return;
     }
-    previewLocalFile(name);
-    return;
+    const isLow=!!lowHandle;
+    handle.getFile().then(file=>{
+      const url=URL.createObjectURL(file);
+      player.innerHTML=`<video src="${url}" controls autoplay preload="auto" style="position:absolute;inset:0;width:100%;height:100%;background:#000"></video>`;
+      const hasOrig=!!origHandle;
+      const hdBtn=isLow&&hasOrig?`<button class="btn btn-ghost" onclick="switchPanelQuality('${name}',true)" style="font-size:11px;padding:3px 8px">HD</button>`:'';
+      const lowBtn=!isLow&&Object.keys(localLowHandles).length?`<button class="btn btn-ghost" onclick="switchPanelQuality('${name}',false)" style="font-size:11px;padding:3px 8px">360p</button>`:'';
+      document.getElementById('rpQualityBtns').innerHTML=
+        `<span style="padding:2px 6px;border-radius:4px;font-size:10px;background:${isLow?'var(--bg4)':'var(--accent)'};color:#fff">${isLow?'360p':'HD'}</span>`+hdBtn+lowBtn;
+    });
+  } else {
+    const embedUrl=getPlayerEmbedUrl(v);
+    if(embedUrl){
+      player.innerHTML=`<iframe src="${embedUrl}" allowfullscreen allow="autoplay"></iframe>`;
+    } else {
+      player.innerHTML=`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:14px">プレビュー不可</div>`;
+    }
+    document.getElementById('rpQualityBtns').innerHTML='';
   }
-  _origOpenPlayer(id);
+
+  const folder=v.folder?folders.find(f=>f.id===v.folder):null;
+  document.getElementById('rpTitle').textContent=v.title||'無題';
+  document.getElementById('rpMeta').innerHTML=
+    `<span class="vcard-badge ${platformClass(v.platform)}" style="position:static">${platformLabel(v.platform)}</span>`+
+    (folder?`<span>📁 ${folder.name}</span>`:'')+
+    (v.addedByName?`<span>👤 ${v.addedByName}</span>`:'');
+  const ni=document.getElementById('rpNote');
+  if(v.note){ni.textContent=v.note;ni.style.display='block'}else{ni.style.display='none'}
+  document.getElementById('rpTags').innerHTML=(v.tags||[]).map(t=>`<span class="vcard-tag">${t}</span>`).join('');
+  panel.classList.add('open');
+}
+
+window.switchPanelQuality=async function(name,hd){
+  const lowName=name.replace(/\.[^.]+$/,'.mp4');
+  const handle=hd
+    ?(localFileHandles[name]||localFileHandles[name.split('/').pop()])
+    :(localLowHandles[lowName]||localLowHandles[lowName.split('/').pop()]);
+  if(!handle)return;
+  const file=await handle.getFile();
+  const url=URL.createObjectURL(file);
+  const player=document.getElementById('rpPlayer');
+  player.innerHTML=`<video src="${url}" controls autoplay preload="auto" style="position:absolute;inset:0;width:100%;height:100%;background:#000"></video>`;
+  const hasOrig=!!(localFileHandles[name]||localFileHandles[name.split('/').pop()]);
+  const hasLow=!!(localLowHandles[lowName]||localLowHandles[lowName.split('/').pop()]);
+  const hdBtn=!hd&&hasOrig?`<button class="btn btn-ghost" onclick="switchPanelQuality('${name}',true)" style="font-size:11px;padding:3px 8px">HD</button>`:'';
+  const lowBtn=hd&&hasLow?`<button class="btn btn-ghost" onclick="switchPanelQuality('${name}',false)" style="font-size:11px;padding:3px 8px">360p</button>`:'';
+  document.getElementById('rpQualityBtns').innerHTML=
+    `<span style="padding:2px 6px;border-radius:4px;font-size:10px;background:${hd?'var(--accent)':'var(--bg4)'};color:#fff">${hd?'HD':'360p'}</span>`+hdBtn+lowBtn;
+}
+
+window.closeRightPanel=function(){
+  const panel=document.getElementById('rightPanel');
+  const player=document.getElementById('rpPlayer');
+  player.innerHTML='';
+  panel.classList.remove('open');
+}
+
+window.editFromPanel=function(){openAddModal(state.currentPlayId)}
+window.openPanelUrl=function(){
+  const v=videos.find(x=>x.id===state.currentPlayId);
+  if(v)window.open(v.url,'_blank');
 }
 
 document.getElementById('searchInput').addEventListener('input',renderGrid);
@@ -1808,9 +1899,9 @@ document.getElementById('sortSelect').addEventListener('change',()=>{
   renderGrid();
 });
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape')['playerModal','addModal','folderModal','shareModal','localModal'].forEach(id=>{
+  if(e.key==='Escape'){closeRightPanel();['playerModal','addModal','folderModal','shareModal','localModal'].forEach(id=>{
     if(!document.getElementById(id).classList.contains('hidden'))closeModal(id);
-  });
+  });}
 });
 </script>
 </body>
