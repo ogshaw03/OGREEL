@@ -1540,7 +1540,6 @@ async function tryRestoreFolder(){
     const perm=await handle.queryPermission({mode:'read'});
     if(perm==='granted'){
       await loadFolderHandle(handle,false);
-      await importLocalAll(true);
       notify('ローカルフォルダを復元しました');
     } else {
       // Need re-grant: show a small prompt button
