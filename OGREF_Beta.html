@@ -405,6 +405,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
         <button class="btn btn-primary" onclick="expandToModal()" style="font-size:12px">⛶ 拡大表示</button>
         <button class="btn btn-ghost" onclick="editFromPanel()" style="font-size:12px">✏️ 編集</button>
         <button class="btn btn-ghost" onclick="openPanelUrl()" style="font-size:12px">↗ 元ページ</button>
+        <button class="btn btn-ghost" id="rpExplorerBtn" onclick="openInExplorer()" style="font-size:12px;display:none">📂 Explorerで開く</button>
         <span id="rpQualityBtns"></span>
       </div>
     </div>
@@ -1853,6 +1854,7 @@ window.openPlayer=function(id){
   const ni=document.getElementById('rpNote');
   if(v.note){ni.textContent=v.note;ni.style.display='block'}else{ni.style.display='none'}
   document.getElementById('rpTags').innerHTML=(v.tags||[]).map(t=>`<span class="vcard-tag">${t}</span>`).join('');
+  document.getElementById('rpExplorerBtn').style.display=v.platform==='local'?'':' none';
   panel.classList.add('open');
 }
 
@@ -1927,6 +1929,18 @@ window.editFromPanel=function(){openAddModal(state.currentPlayId)}
 window.openPanelUrl=function(){
   const v=videos.find(x=>x.id===state.currentPlayId);
   if(v)window.open(v.url,'_blank');
+}
+
+window.openInExplorer=function(){
+  const v=videos.find(x=>x.id===state.currentPlayId);
+  if(!v||v.platform!=='local')return;
+  const name=v.url.replace('local:','');
+  const rootName=currentDirHandle?currentDirHandle.name:'';
+  const folderPart=name.includes('/')?name.split('/')[0]:'';
+  const folderPath=rootName+(folderPart?'\\'+folderPart:'');
+  navigator.clipboard.writeText(folderPath).then(()=>{
+    notify('コピーしました: '+folderPath+' — Win+E → アドレスバーに貼り付けてEnter');
+  });
 }
 
 document.getElementById('searchInput').addEventListener('input',renderGrid);
