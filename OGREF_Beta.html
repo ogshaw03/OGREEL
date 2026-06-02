@@ -1711,22 +1711,32 @@ window.selectLocalFolder=async function(){
   }
 }
 
-window.previewLocalFile=async function(name){
-  const handle=localFileHandles[name]||localFileHandles[name.split('/').pop()];
+window.previewLocalFile=async function(name, forceHD){
+  const lowName=name.replace(/\.[^.]+$/,'.mp4');
+  const lowHandle=!forceHD?(localLowHandles[lowName]||localLowHandles[lowName.split('/').pop()]):null;
+  const origHandle=localFileHandles[name]||localFileHandles[name.split('/').pop()];
+  const handle=lowHandle||origHandle;
   if(!handle){notify('ファイルが見つかりません。フォルダを再選択してください。');return}
+  const isLow=!!lowHandle&&!forceHD;
   const file=await handle.getFile();
   const url=URL.createObjectURL(file);
   const modal=document.getElementById('playerModal');
   const wrap=document.getElementById('playerIframeWrap');
-  wrap.innerHTML=`<video src="${url}" controls autoplay style="position:absolute;inset:0;width:100%;height:100%;background:#000" onended="URL.revokeObjectURL('${url}')"></video>`;
+  wrap.innerHTML=`<video src="${url}" controls autoplay style="position:absolute;inset:0;width:100%;height:100%;background:#000"></video>`;
   wrap.style.display='block';
   const displayName=name.split('/').pop();
   const rootName=currentDirHandle?currentDirHandle.name:'';
   const subFolder=name.includes('/')?name.split('/')[0]:'';
   const fullDisplay=rootName+(subFolder?' / '+subFolder:'')+' / '+displayName;
+  const qualityLabel=isLow?'360p':'HD';
+  const hasOrig=!!origHandle;
+  const hdBtn=isLow&&hasOrig?`<button class="btn btn-ghost" onclick="previewLocalFile('${name}',true)" style="font-size:11px;padding:3px 8px">HD</button>`:'';
+  const lowBtn=!isLow&&Object.keys(localLowHandles).length?`<button class="btn btn-ghost" onclick="previewLocalFile('${name}',false)" style="font-size:11px;padding:3px 8px">360p</button>`:'';
   document.getElementById('playerTitle').textContent=displayName;
   document.getElementById('playerMeta').innerHTML=
     `<span class="vcard-badge badge-local" style="position:static">ローカル</span>`+
+    `<span style="padding:2px 6px;border-radius:4px;font-size:10px;background:${isLow?'var(--bg4)':'var(--accent)'};color:#fff">${qualityLabel}</span>`+
+    hdBtn+lowBtn+
     `<span style="cursor:pointer;text-decoration:underline dotted" onclick="copyPath('${name}')" title="クリックでパスをコピー">📁 ${fullDisplay}</span>`;
   document.getElementById('playerNote').style.display='none';
   document.getElementById('playerTags').innerHTML='';
