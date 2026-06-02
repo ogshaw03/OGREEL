@@ -1936,10 +1936,9 @@ window.openInExplorer=function(){
   if(!v||v.platform!=='local')return;
   const name=v.url.replace('local:','');
   const rootName=currentDirHandle?currentDirHandle.name:'';
-  const folderPart=name.includes('/')?name.split('/')[0]:'';
-  const folderPath=rootName+(folderPart?'\\'+folderPart:'');
-  navigator.clipboard.writeText(folderPath).then(()=>{
-    notify('コピーしました: '+folderPath+' — Win+E → アドレスバーに貼り付けてEnter');
+  const filePath=(rootName+'\\'+name).replace(/\//g,'\\');
+  navigator.clipboard.writeText(filePath).then(()=>{
+    notify('コピーしました: '+filePath+' — Win+E → アドレスバーに貼り付けてEnter');
   });
 }
 
