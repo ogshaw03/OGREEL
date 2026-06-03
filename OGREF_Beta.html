@@ -1196,7 +1196,7 @@ window.setView=function(v){
 
 function getFilteredVideos(){
   // Use snapshot for local videos, live data for others
-  if(localVideoSnapshot===null)localVideoSnapshot=videos.filter(v=>v.platform==='local');
+  if(localVideoSnapshot===null||(localVideoSnapshot.length===0&&videos.some(v=>v.platform==='local')))localVideoSnapshot=videos.filter(v=>v.platform==='local');
   const liveNonLocal=videos.filter(v=>v.platform!=='local');
   return [...liveNonLocal,...localVideoSnapshot];
 }
