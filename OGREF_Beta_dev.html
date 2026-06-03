@@ -27,9 +27,9 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .login-screen{position:fixed;inset:0;background:var(--bg);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px}
 .login-screen.hidden{display:none}
 .login-box{width:100%;max-width:400px;text-align:center}
-.login-logo{margin-bottom:8px;position:relative;display:block}
+.login-logo{margin-bottom:16px;position:relative;display:block}
 .login-logo img{height:120px;width:auto;display:block;margin:0 auto}
-.login-logo .ver{position:absolute;top:100%;right:0;margin-top:4px;font-family:var(--font-head);font-size:14px;font-weight:700;color:var(--accent);letter-spacing:1px}
+.login-logo .ver{display:block;text-align:right;margin-top:2px;font-family:var(--font-head);font-size:14px;font-weight:700;color:var(--accent);letter-spacing:1px}
 .login-sub{font-size:13px;color:var(--text3);margin-bottom:48px;line-height:1.6}
 .google-btn{display:inline-flex;align-items:center;gap:12px;padding:12px 24px;background:#fff;color:#333;border-radius:var(--radius);font-size:14px;font-weight:500;transition:all .15s;box-shadow:0 2px 8px rgba(0,0,0,.3)}
 .google-btn:hover{background:#f5f5f5;transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.4)}
@@ -39,9 +39,9 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .ws-screen{position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;flex-direction:column;align-items:center;overflow-y:auto;padding:20px}
 .ws-screen.hidden{display:none}
 .ws-box{width:100%;max-width:480px;padding:20px 0;flex-shrink:0}
-.ws-logo{margin-bottom:16px;position:relative;display:inline-block}
+.ws-logo{margin-bottom:24px;position:relative;display:inline-block}
 .ws-logo img{height:80px;width:auto;display:block}
-.ws-logo .ver{position:absolute;top:100%;right:0;margin-top:4px;font-family:var(--font-head);font-size:12px;font-weight:700;color:var(--accent);letter-spacing:1px}
+.ws-logo .ver{display:block;text-align:right;margin-top:2px;font-family:var(--font-head);font-size:12px;font-weight:700;color:var(--accent);letter-spacing:1px}
 .ws-user{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);margin-bottom:24px;font-size:13px}
 .ws-user img{width:28px;height:28px;border-radius:50%}
 .ws-user-name{flex:1;color:var(--text2)}
@@ -73,9 +73,9 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 
 /* HEADER */
 .header{display:flex;align-items:center;gap:12px;padding:0 16px;height:56px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;z-index:100}
-.logo{position:relative;display:inline-flex;align-items:center;flex-shrink:0}
+.logo{position:relative;display:inline-flex;flex-direction:column;align-items:flex-end;flex-shrink:0}
 .logo img{height:40px;width:auto;display:block}
-.logo .ver{position:absolute;top:100%;right:0;margin-top:2px;font-family:var(--font-head);font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.5px;white-space:nowrap}
+.logo .ver{display:block;text-align:right;margin-top:1px;font-family:var(--font-head);font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.5px;white-space:nowrap}
 .ws-switcher{display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);cursor:pointer;font-size:12px;color:var(--text2);transition:all .15s}
 .ws-switcher:hover{border-color:var(--border2);color:var(--text)}
 .ws-switcher-dot{width:7px;height:7px;border-radius:50%}
