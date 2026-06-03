@@ -372,6 +372,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
     <div class="toolbar">
       <div class="toolbar-left">
         <span class="count-badge" id="countLabel">0件</span>
+        <button class="btn btn-ghost" onclick="refreshLocalFolder()" title="ローカルフォルダを再スキャン" style="font-size:12px;padding:4px 8px">🔄 更新</button>
         <select class="sort-select" id="sortSelect">
           <option value="newest">新しい順</option>
           <option value="oldest">古い順</option>
@@ -544,6 +545,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
         <div style="font-size:11px;color:var(--text3);margin-top:4px">選択したフォルダの絶対パスを入力するとExplorerで開くが使えます</div>
       </div>
       <div style="font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.8">
+        作成者のベースパスが全メンバーに自動適用されます。<br>
         フォルダを選択すると動画ファイルが一覧表示されます。選択した動画をOGREFに登録できます。<br>
         ※ ページを更新するとローカルファイルは再生できなくなります（再度フォルダを選択してください）<br>
         ※ Chrome推奨。登録したローカル動画は自分のPC以外では再生できません。
@@ -1660,6 +1662,58 @@ function showFolderReconnect(handle){
   setTimeout(()=>{n.style.pointerEvents='none'},8000);
 }
 
+window.refreshLocalFolder=async function(){
+  if(!currentDirHandle){notify('ローカルフォルダが未接続です。💾 ローカルから接続してください');return}
+  notify('スキャン中...');
+  await loadFolderHandle(currentDirHandle,false);
+  const scan=window._localScan;
+  if(!scan){renderGrid();notify('再スキャン完了');return}
+  // Sync Firestore: add new files, remove deleted files
+  const existingUrls=new Set(videos.filter(v=>v.platform==='local').map(v=>v.url));
+  let added=0;
+  for(const fh of scan.rootFiles){
+    const url='local:'+fh.name;
+    if(!existingUrls.has(url)){
+      await addDoc(collection(db,'workspaces',currentWsId,'videos'),{
+        url,vid:null,platform:'local',title:fh.name.replace(/\.[^.]+$/,''),
+        tags:[],folder:'',note:'',thumb:'',startTime:0,fav:false,
+        createdAt:Date.now(),addedBy:currentUser.uid,addedByName:currentUser.displayName||''
+      });
+      added++;
+    }
+  }
+  for(const [folderName,files] of Object.entries(scan.subfolders)){
+    let existing=folders.find(f=>f.name===folderName);
+    let folderId=existing?existing.id:null;
+    for(const fh of files){
+      const url='local:'+folderName+'/'+fh.name;
+      if(!existingUrls.has(url)){
+        if(!folderId){
+          const ref=await addDoc(collection(db,'workspaces',currentWsId,'folders'),{name:folderName,color:COLORS[0],createdAt:Date.now()});
+          folderId=ref.id;
+        }
+        await addDoc(collection(db,'workspaces',currentWsId,'videos'),{
+          url,vid:null,platform:'local',title:fh.name.replace(/\.[^.]+$/,''),
+          tags:[],folder:folderId,note:'',thumb:'',startTime:0,fav:false,
+          createdAt:Date.now(),addedBy:currentUser.uid,addedByName:currentUser.displayName||''
+        });
+        added++;
+      }
+    }
+  }
+  const allLocalNames=new Set();
+  scan.rootFiles.forEach(fh=>allLocalNames.add('local:'+fh.name));
+  Object.entries(scan.subfolders).forEach(([fn,files])=>files.forEach(fh=>allLocalNames.add('local:'+fn+'/'+fh.name)));
+  const toRemove=videos.filter(v=>v.platform==='local'&&!allLocalNames.has(v.url));
+  let removed=0;
+  for(const v of toRemove){
+    await deleteDoc(doc(db,'workspaces',currentWsId,'videos',v.id));
+    removed++;
+  }
+  renderGrid();
+  notify('更新完了: 追加 '+added+'件 / 削除 '+removed+'件');
+}
+
 window.openLocalFolder=function(){
   if(!window.showDirectoryPicker){
     notify('このブラウザはFile System Access APIに対応していません。Chromeをお使いください。');
@@ -1679,7 +1733,7 @@ window.openLocalFolder=function(){
   }
   loadBasePath();
   // Creator: full control, Member: playback folder only
-  document.getElementById('selectOrigBtn').textContent=isWsCreator?'📁 元フォルダを選択（登録）':'📁 再生用フォルダを接続';
+  document.getElementById('selectOrigBtn').textContent='📁 フォルダを接続';
   document.getElementById('selectLowBtn').style.display='';
   document.getElementById('disconnectBtn').style.display=(isWsCreator&&(currentDirHandle||localCount>0))?'':'none';
   document.getElementById('localModal').classList.remove('hidden');
@@ -1752,12 +1806,8 @@ window.selectLocalFolder=async function(){
     document.getElementById('localFileList').innerHTML='<div style="font-size:12px;color:var(--text3)">読み込み中...</div>';
     await loadFolderHandle(dirHandle,true);
     if(currentWsId)await idbSaveHandle(currentWsId,dirHandle);
-    if(isWsCreator){
-      await importLocalAll();
-    } else {
-      notify('再生用フォルダを接続しました');
-      closeModal('localModal');
-    }
+    notify('フォルダを接続しました。ツールバーの🔄 更新ボタンで同期できます');
+    closeModal('localModal');
   }catch(e){
     if(e.name!=='AbortError')notify('フォルダの読み込みに失敗しました: '+e.message);
   }
