@@ -724,133 +724,111 @@ async function renderAllowedUsers(){
   }
 }
 
-window.openAccessManager=function(){
-  const win=window.open('','_blank','width=580,height=680,scrollbars=yes,resizable=yes');
-  if(!win){notify('ポップアップがブロックされました。許可してください');return}
-  // Pass only serializable data via window properties
-  win._ogrefConfig={
-    apiKey:'AIzaSyASqL2Qp8sGrkzHz7J_HhE6QXntAZOO7RE',
-    authDomain:'animref-ef532.firebaseapp.com',
-    projectId:'animref-ef532',
-    storageBucket:'animref-ef532.firebasestorage.app',
-    messagingSenderId:'1029274074603',
-    appId:'1:1029274074603:web:f0ddc3eb69e35a47276dae'
-  };
-  win._ogrefUserEmail=currentUser?currentUser.email:'';
-  const html='<!DOCTYPE html><html lang="ja"><head>'
-    +'<meta charset="UTF-8"><title>アクセス管理 — OGREF</title>'
-    +'<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=Noto+Sans+JP:wght@300;400&display=swap" rel="stylesheet">'
-    +'<style>'
-    +'*{margin:0;padding:0;box-sizing:border-box}'
-    +':root{--bg:#0d0d0f;--bg2:#141416;--bg3:#1c1c1f;--bg4:#232327;--border:#2a2a2f;--border2:#3a3a42;--text:#e8e8ec;--text2:#9a9aaa;--text3:#5a5a6a;--accent:#7c6fff;--red:#ff5a5a;--radius:10px;--radius2:6px}'
-    +'body{background:var(--bg);color:var(--text);font-family:"Noto Sans JP",sans-serif;padding:24px;min-height:100vh}'
-    +'button{cursor:pointer;border:none;background:none;color:inherit;font-family:inherit}'
-    +'input{font-family:inherit;color:var(--text);background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:8px 12px;outline:none;font-size:13px;width:100%}'
-    +'input:focus{border-color:var(--accent)}'
-    +'.ttl{font-family:"Syne",sans-serif;font-size:20px;font-weight:700;letter-spacing:2px;margin-bottom:4px}'
-    +'.ttl span{color:var(--accent)}'
-    +'.sub{font-size:12px;color:var(--text3);margin-bottom:24px}'
-    +'.lbl{font-size:10px;font-weight:500;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px}'
-    +'.row{display:flex;gap:8px;margin-bottom:12px}'
-    +'.row input{flex:1}'
-    +'.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--radius2);font-size:13px;font-weight:500;cursor:pointer;border:none}'
-    +'.btn-p{background:var(--accent);color:#fff}'
-    +'.list{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}'
-    +'.urow{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);font-size:13px}'
-    +'.uemail{flex:1;color:var(--text2)}'
-    +'.rbadge{font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(124,111,255,.2);color:#7c6fff;border:1px solid rgba(124,111,255,.4)}'
-    +'.abtn{font-size:12px;color:var(--text3);padding:3px 7px;border-radius:4px;cursor:pointer;border:none;background:none}'
-    +'.abtn:hover{color:var(--red);background:rgba(255,90,90,.1)}'
-    +'.note{font-size:11px;color:var(--text3);line-height:1.8;margin-top:8px}'
-    +'.notif{position:fixed;bottom:20px;right:20px;background:var(--bg4);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 16px;font-size:13px;display:none}'
-    +'</style></head><body>'
-    +'<div class="ttl">OGREF<span>_Beta</span></div>'
-    +'<div class="sub">アクセス管理（管理者専用）</div>'
-    +'<div class="lbl">メンバーを追加</div>'
-    +'<div class="row"><input type="email" id="newEmail" placeholder="許可するメールアドレス"><button class="btn btn-p" onclick="addUser()">追加</button></div>'
-    +'<div class="lbl" style="margin-top:16px">許可ユーザー一覧</div>'
-    +'<div class="list" id="userList"><div style="color:var(--text3);font-size:13px">読み込み中...</div></div>'
-    +'<div class="note">※ 管理者は常にアクセス可能です。<br>追加したメールアドレスのGoogleアカウントのみアクセスできます。</div>'
-    +'<div id="notif" class="notif"></div>'
-    +'<scr'+'ipt type="module">'
-    +'import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";'
-    +'import{getFirestore,doc,getDoc,updateDoc}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";'
-    +'const cfg=window.opener._ogrefConfig;'
-    +'const userEmail=window.opener._ogrefUserEmail;'
-    +'const app=initializeApp(cfg,"access-manager");'
-    +'const db=getFirestore(app);'
-    +'const ACCESS_DOC=doc(db,"access_control","config");'
-    +'function notify(msg){const n=document.getElementById("notif");n.textContent=msg;n.style.display="block";setTimeout(()=>n.style.display="none",2200)}'
-    +'async function render(){'
-    +'  try{'
-    +'    const snap=await getDoc(ACCESS_DOC);'
-    +'    const data=snap.data()||{};'
-    +'    const admins=[...(data.adminEmails||[])];'
-    +'    if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);'
-    +'    const members=(data.allowedEmails||[]);'
-    +'    const list=document.getElementById("userList");'
-    +'    list.innerHTML="";'
-    +'    admins.forEach(email=>{'
-    +'      const isSelf=email===userEmail;'
-    +'      const row=document.createElement("div");row.className="urow";'
-    +'      row.innerHTML="<span class=\'uemail\'>"+email+(isSelf?" (自分)":"")+"</span><span class=\'rbadge\'>管理者</span>"'
-    +'        +(!isSelf?"<button class=\'abtn\' onclick=\'demote(\\""+email+"\\")\'">↓</button>":"")'
-    +'        +"<button class=\'abtn\' onclick=\'removeUser(\\""+email+"\\",true)\'>✕</button>";'
-    +'      list.appendChild(row);'
-    +'    });'
-    +'    members.forEach(email=>{'
-    +'      const row=document.createElement("div");row.className="urow";'
-    +'      row.innerHTML="<span class=\'uemail\'>"+email+"</span>"'
-    +'        +"<button class=\'abtn\' onclick=\'promote(\\""+email+"\\")\'">↑</button>"'
-    +'        +"<button class=\'abtn\' onclick=\'removeUser(\\""+email+"\\")\'">✕</button>";'
-    +'      list.appendChild(row);'
-    +'    });'
-    +'    if(!admins.length&&!members.length)list.innerHTML="<div style=\'color:var(--text3);font-size:13px;padding:8px\'>許可ユーザーはいません</div>";'
-    +'  }catch(e){document.getElementById("userList").innerHTML="<div style=\'color:var(--red);font-size:13px;padding:8px\'>読み込み失敗: "+e.message+"</div>";}'
-    +'}'
-    +'window.addUser=async function(){'
-    +'  const email=document.getElementById("newEmail").value.trim().toLowerCase();'
-    +'  if(!email){notify("メールアドレスを入力してください");return;}'
-    +'  const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};'
-    +'  const admins=[...(data.adminEmails||[])];if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);'
-    +'  const members=[...(data.allowedEmails||[])];'
-    +'  if(admins.includes(email)||members.includes(email)){notify("既に追加されています");return;}'
-    +'  members.push(email);'
-    +'  await updateDoc(ACCESS_DOC,{allowedEmails:members});'
-    +'  document.getElementById("newEmail").value="";'
-    +'  await render();notify("追加しました: "+email);'
-    +'};'
-    +'window.promote=async function(email){'
-    +'  if(!confirm(email+" を管理者に昇格しますか？"))return;'
-    +'  const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};'
-    +'  const admins=[...(data.adminEmails||[])];if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);'
-    +'  if(!admins.includes(email))admins.push(email);'
-    +'  const members=(data.allowedEmails||[]).filter(e=>e!==email);'
-    +'  await updateDoc(ACCESS_DOC,{adminEmails:admins,allowedEmails:members});'
-    +'  await render();notify("昇格しました");'
-    +'};'
-    +'window.demote=async function(email){'
-    +'  if(!confirm(email+" をメンバーに変更しますか？"))return;'
-    +'  const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};'
-    +'  const admins=(data.adminEmails||[]).filter(e=>e!==email);'
-    +'  const members=[...(data.allowedEmails||[])];if(!members.includes(email))members.push(email);'
-    +'  await updateDoc(ACCESS_DOC,{adminEmails:admins,allowedEmails:members});'
-    +'  await render();notify("変更しました");'
-    +'};'
-    +'window.removeUser=async function(email,isAdmin){'
-    +'  if(!confirm(email+" を削除しますか？"))return;'
-    +'  const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};'
-    +'  const upd={};'
-    +'  if(isAdmin){upd.adminEmails=(data.adminEmails||[]).filter(e=>e!==email);}'
-    +'  else{upd.allowedEmails=(data.allowedEmails||[]).filter(e=>e!==email);}'
-    +'  await updateDoc(ACCESS_DOC,upd);'
-    +'  await render();notify("削除しました");'
-    +'};'
-    +'render();'
-    +'</sc'+'ript></body></html>';
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+window.openAccessManager=async function(){
+  // モーダルをメインページ内に直接描画（別ウィンドウ方式はmoduleスクリプト制限で動作不可）
+  let existing=document.getElementById('accessModal');
+  if(existing)existing.remove();
+  const bg=document.createElement('div');
+  bg.id='accessModal';
+  bg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px';
+  bg.innerHTML=`
+    <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:14px;width:100%;max-width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.6);animation:modalIn .25s cubic-bezier(.16,1,.3,1)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-family:var(--font-head);font-size:16px;font-weight:700">🔐 アクセス管理</div>
+        <button onclick="document.getElementById('accessModal').remove()" style="cursor:pointer;border:none;background:none;color:var(--text);font-size:18px;width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center">✕</button>
+      </div>
+      <div style="padding:20px">
+        <div style="font-size:10px;font-weight:500;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px">メンバーを追加</div>
+        <div style="display:flex;gap:8px;margin-bottom:20px">
+          <input type="email" id="amNewEmail" placeholder="許可するメールアドレス" style="flex:1">
+          <button class="btn btn-primary" onclick="amAddUser()">追加</button>
+        </div>
+        <div style="font-size:10px;font-weight:500;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px">許可ユーザー一覧</div>
+        <div id="amUserList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px"><div style="font-size:13px;color:var(--text3)">読み込み中...</div></div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.8">※ 管理者は常にアクセス可能です。追加したメールアドレスのGoogleアカウントのみアクセスできます。</div>
+      </div>
+    </div>`;
+  bg.addEventListener('click',e=>{if(e.target===bg)bg.remove()});
+  document.body.appendChild(bg);
+  await amRender();
+}
+
+async function amRender(){
+  const list=document.getElementById('amUserList');
+  if(!list)return;
+  try{
+    const snap=await getDoc(ACCESS_DOC);
+    const data=snap.data()||{};
+    const admins=[...(data.adminEmails||[])];
+    if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);
+    const members=(data.allowedEmails||[]);
+    list.innerHTML='';
+    admins.forEach(email=>{
+      const isSelf=email===currentUser.email;
+      const row=document.createElement('div');
+      row.className='allowed-user-item';
+      row.innerHTML=`<span class="allowed-user-email">${email}${isSelf?' (自分)':''}</span><span class="allowed-user-role">管理者</span>`
+        +(!isSelf?`<button class="allowed-user-del" onclick="amDemote('${email}')" title="メンバーに変更">↓</button>`:'')
+        +`<button class="allowed-user-del" onclick="amRemove('${email}',true)" title="削除">✕</button>`;
+      list.appendChild(row);
+    });
+    members.forEach(email=>{
+      const row=document.createElement('div');
+      row.className='allowed-user-item';
+      row.innerHTML=`<span class="allowed-user-email">${email}</span>`
+        +`<button class="allowed-user-del" onclick="amPromote('${email}')" title="管理者に昇格">↑</button>`
+        +`<button class="allowed-user-del" onclick="amRemove('${email}')" title="削除">✕</button>`;
+      list.appendChild(row);
+    });
+    if(!admins.length&&!members.length)list.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px">許可ユーザーはいません</div>';
+  }catch(e){if(list)list.innerHTML=`<div style="font-size:13px;color:var(--red);padding:8px">読み込み失敗: ${e.message}</div>`}
+}
+
+window.amAddUser=async function(){
+  const email=document.getElementById('amNewEmail').value.trim().toLowerCase();
+  if(!email){notify('メールアドレスを入力してください');return}
+  try{
+    const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};
+    const admins=[...(data.adminEmails||[])];if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);
+    const members=[...(data.allowedEmails||[])];
+    if(admins.includes(email)||members.includes(email)){notify('既に追加されています');return}
+    members.push(email);
+    await updateDoc(ACCESS_DOC,{allowedEmails:members});
+    document.getElementById('amNewEmail').value='';
+    await amRender();notify('追加しました: '+email);
+  }catch(e){notify('追加失敗: '+e.message)}
+}
+window.amPromote=async function(email){
+  if(!confirm(`${email} を管理者に昇格しますか？`))return;
+  try{
+    const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};
+    const admins=[...(data.adminEmails||[])];if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);
+    if(!admins.includes(email))admins.push(email);
+    const members=(data.allowedEmails||[]).filter(e=>e!==email);
+    await updateDoc(ACCESS_DOC,{adminEmails:admins,allowedEmails:members});
+    await amRender();notify('管理者に昇格しました');
+  }catch(e){notify('失敗: '+e.message)}
+}
+window.amDemote=async function(email){
+  if(!confirm(`${email} をメンバーに変更しますか？`))return;
+  try{
+    const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};
+    const admins=(data.adminEmails||[]).filter(e=>e!==email);
+    const members=[...(data.allowedEmails||[])];if(!members.includes(email))members.push(email);
+    await updateDoc(ACCESS_DOC,{adminEmails:admins,allowedEmails:members});
+    await amRender();notify('メンバーに変更しました');
+  }catch(e){notify('失敗: '+e.message)}
+}
+window.amRemove=async function(email,isAdmin=false){
+  if(!confirm(`${email} を削除しますか？`))return;
+  try{
+    const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};
+    const upd={};
+    if(isAdmin){upd.adminEmails=(data.adminEmails||[]).filter(e=>e!==email)}
+    else{upd.allowedEmails=(data.allowedEmails||[]).filter(e=>e!==email)}
+    await updateDoc(ACCESS_DOC,upd);
+    await amRender();notify('削除しました');
+  }catch(e){notify('削除失敗: '+e.message)}
 }
 
 window.promoteToAdmin=async function(email){
