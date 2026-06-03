@@ -551,6 +551,10 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
         <input type="text" class="form-input" id="localBasePath" placeholder="例: D:\Reference\動画" style="font-family:monospace;font-size:12px" onchange="saveBasePath()">
         <div style="font-size:11px;color:var(--text3);margin-top:4px">選択したフォルダの絶対パスを入力するとExplorerで開くが使えます</div>
       </div>
+      <div class="form-row" style="margin-bottom:10px">
+        <label class="form-label">軽量版フォルダパス（作成者のみ変更可・全メンバー共有）</label>
+        <input type="text" class="form-input" id="localLowPath" placeholder="例: D:\Reference\動画_low" style="font-family:monospace;font-size:12px" onchange="saveLowPath()">
+      </div>
       <div style="font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.8">
         作成者のベースパスが全メンバーに自動適用されます。<br>
         フォルダを選択すると動画ファイルが一覧表示されます。選択した動画をOGREFに登録できます。<br>
@@ -2061,6 +2065,17 @@ window.openPanelUrl=function(){
 }
 
 let cachedBasePath='';
+let cachedLowPath='';
+
+window.saveLowPath=async function(){
+  const val=document.getElementById('localLowPath').value.trim();
+  if(!currentWsId)return;
+  try{
+    await updateDoc(doc(db,'workspaces',currentWsId),{localLowPath:val});
+    cachedLowPath=val;
+    notify('軽量版パスを保存しました');
+  }catch(e){notify('保存失敗: '+e.message)}
+}
 
 window.saveBasePath=async function(){
   const val=document.getElementById('localBasePath').value.trim();
@@ -2078,22 +2093,21 @@ function getBasePath(){
 
 async function loadBasePath(){
   const input=document.getElementById('localBasePath');
-  if(!currentWsId){input.value='';return}
+  const lowInput=document.getElementById('localLowPath');
+  if(!currentWsId){input.value='';lowInput.value='';return}
   try{
     const snap=await getDoc(doc(db,'workspaces',currentWsId));
     const data=snap.data()||{};
     cachedBasePath=data.localBasePath||'';
+    cachedLowPath=data.localLowPath||'';
     input.value=cachedBasePath;
-    // Only workspace creator can edit
+    lowInput.value=cachedLowPath;
     const isCreator=data.createdBy===currentUser.uid;
-    if(isCreator){
-      input.removeAttribute('readonly');
-      input.style.opacity='1';
-    } else {
-      input.setAttribute('readonly',true);
-      input.style.opacity='.6';
-    }
-  }catch(e){cachedBasePath='';input.value=''}
+    [input,lowInput].forEach(el=>{
+      if(isCreator){el.removeAttribute('readonly');el.style.opacity='1'}
+      else{el.setAttribute('readonly',true);el.style.opacity='.6'}
+    });
+  }catch(e){cachedBasePath='';cachedLowPath='';input.value='';lowInput.value=''}
 }
 
 window.openInExplorer=function(){
