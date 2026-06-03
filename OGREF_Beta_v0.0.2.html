@@ -845,24 +845,6 @@ window.openAccessManager=function(){
   win.document.close();
 }
 
-
-  const email=document.getElementById('adminNewEmail').value.trim().toLowerCase();
-  if(!email){notify('メールアドレスを入力してください');return}
-  try{
-    const snap=await getDoc(ACCESS_DOC);
-    const data=snap.data()||{};
-    const admins=[...(data.adminEmails||[])];
-    if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);
-    const members=[...(data.allowedEmails||[])];
-    if(admins.includes(email)||members.includes(email)){notify('既に追加されています');return}
-    members.push(email);
-    await updateDoc(ACCESS_DOC,{allowedEmails:members});
-    document.getElementById('adminNewEmail').value='';
-    await renderAllowedUsers();
-    notify('追加しました: '+email);
-  }catch(e){notify('追加失敗: '+e.message)}
-}
-
 window.promoteToAdmin=async function(email){
   if(!confirm(`${email} を管理者に昇格しますか？`))return;
   try{
@@ -935,7 +917,6 @@ async function loadAndShowWsScreen(){
   const access=await checkAccess(currentUser);
   if(access==='admin'){
     document.getElementById('adminSection').style.display='';
-    await renderAllowedUsers();
   } else {
     document.getElementById('adminSection').style.display='none';
   }
