@@ -225,6 +225,13 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .allowed-user-role{font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(124,111,255,.2);color:#7c6fff;border:1px solid rgba(124,111,255,.4)}
 .allowed-user-del{font-size:12px;color:var(--text3);padding:3px 7px;border-radius:4px}
 .allowed-user-del:hover{color:var(--red);background:rgba(255,90,90,.1)}
+.change-report{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:24px;z-index:9999;box-shadow:0 20px 60px rgba(0,0,0,.6);max-width:420px;width:90%;animation:modalIn .25s cubic-bezier(.16,1,.3,1)}
+.change-report-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998}
+.change-report-title{font-family:var(--font-head);font-size:15px;font-weight:700;margin-bottom:14px}
+.change-report-item{padding:8px 12px;background:var(--bg3);border-radius:var(--radius2);font-size:13px;color:var(--text2);margin-bottom:6px;line-height:1.5}
+.change-report-item.added{border-left:3px solid var(--green)}
+.change-report-item.removed{border-left:3px solid var(--red)}
+.change-report-close{margin-top:12px;width:100%;justify-content:center}
 .notification{position:fixed;bottom:24px;right:24px;background:var(--bg4);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 16px;font-size:13px;z-index:9999;animation:slideIn .2s ease;pointer-events:none}
 @keyframes slideIn{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
 .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:300px;color:var(--text3);padding:60px;grid-column:1/-1}
@@ -588,6 +595,7 @@ const WS_COLORS=['#7c6fff','#5a8fff','#5affa0','#ffb85a','#ff5a5a','#ff5aaa'];
 
 let videos=[], folders=[];
 let autoplayEnabled=localStorage.getItem('ogref_autoplay')!=='false';
+let localVideoSnapshot=null;
 let state={filter:'all',folder:null,tag:null,view:'grid',editId:null,currentTags:[],selectedColor:'purple',currentPlayId:null};
 let currentUser=null;
 let currentWsId=null;
@@ -910,6 +918,7 @@ function enterWorkspace(id, name, code, color){
   document.getElementById('wsSwitcherName').textContent=name;
   document.getElementById('wsSwitcherDot').style.background=color||'#7c6fff';
   initAutoplayBtn();
+  localVideoSnapshot=null;
   startListeners();
   loadBasePath();
   // Check if current user is workspace creator
@@ -930,6 +939,9 @@ function initAutoplayBtn(){
   document.getElementById('autoplayToggle').style.color=autoplayEnabled?'var(--green)':'var(--text2)';
 }
 
+function initLocalSnapshot(){
+  localVideoSnapshot=videos.filter(v=>v.platform==='local');
+}
 function startListeners(){
   if(unsubVideos)unsubVideos();
   if(unsubFolders)unsubFolders();
@@ -1182,9 +1194,15 @@ window.setView=function(v){
   document.getElementById('videoGrid').classList.toggle('list-view',v==='list');
 }
 
+function getFilteredVideos(){
+  // Use snapshot for local videos, live data for others
+  if(localVideoSnapshot===null)localVideoSnapshot=videos.filter(v=>v.platform==='local');
+  const liveNonLocal=videos.filter(v=>v.platform!=='local');
+  return [...liveNonLocal,...localVideoSnapshot];
+}
 function getFiltered(){
   const q=document.getElementById('searchInput').value.toLowerCase();
-  return videos.filter(v=>{
+  return getFilteredVideos().filter(v=>{
     if(state.folder&&v.folder!==state.folder)return false;
     if(state.tag&&!(v.tags||[]).includes(state.tag))return false;
     if(state.filter==='fav'&&!v.fav)return false;
@@ -1397,11 +1415,12 @@ function renderGrid(){
 }
 
 function renderSidebar(){
-  document.getElementById('badge-all').textContent=videos.length;
-  document.getElementById('badge-fav').textContent=videos.filter(v=>v.fav).length;
+  const displayVids=getFilteredVideos();
+  document.getElementById('badge-all').textContent=displayVids.length;
+  document.getElementById('badge-fav').textContent=displayVids.filter(v=>v.fav).length;
   ['yt','vm','nc','x','ig','gd','local'].forEach(p=>{
     const el=document.getElementById('badge-'+p);
-    if(el)el.textContent=videos.filter(v=>v.platform===p).length;
+    if(el)el.textContent=displayVids.filter(v=>v.platform===p).length;
   });
   const fl=document.getElementById('folderList');
   fl.innerHTML='';
@@ -1710,8 +1729,45 @@ window.refreshLocalFolder=async function(){
     await deleteDoc(doc(db,'workspaces',currentWsId,'videos',v.id));
     removed++;
   }
+  // Build detailed change report
+  const oldSnapshot=localVideoSnapshot||[];
+  const newLocalVideos=videos.filter(v=>v.platform==='local');
+  const oldUrls=new Set(oldSnapshot.map(v=>v.url));
+  const newUrls=new Set(newLocalVideos.map(v=>v.url));
+  const addedVids=newLocalVideos.filter(v=>!oldUrls.has(v.url));
+  const removedVids=oldSnapshot.filter(v=>!newUrls.has(v.url));
+  // Group by folder
+  const groupByFolder=(list)=>{
+    const map={};
+    list.forEach(v=>{
+      const name=v.url.replace('local:','');
+      const parts=name.split('/');
+      const folderName=parts.length>1?parts[0]:'ルート';
+      if(!map[folderName])map[folderName]=0;
+      map[folderName]++;
+    });
+    return map;
+  };
+  const addedByFolder=groupByFolder(addedVids);
+  const removedByFolder=groupByFolder(removedVids);
+  // Check new folders
+  const oldFolderNames=new Set(oldSnapshot.map(v=>{const n=v.url.replace('local:','');const p=n.split('/');return p.length>1?p[0]:null}).filter(Boolean));
+  let report=[];
+  Object.entries(addedByFolder).forEach(([fn,cnt])=>{
+    const isNew=fn!=='ルート'&&!oldFolderNames.has(fn);
+    report.push(isNew?`${fn} フォルダが新規作成、動画が${cnt}つ追加されています`:`${fn} フォルダ内の動画が${cnt}つ追加されています`);
+  });
+  Object.entries(removedByFolder).forEach(([fn,cnt])=>{
+    report.push(`${fn} フォルダ内の動画が${cnt}つ削除されています`);
+  });
+  // Update snapshot
+  localVideoSnapshot=newLocalVideos;
   renderGrid();
-  notify('更新完了: 追加 '+added+'件 / 削除 '+removed+'件');
+  if(report.length){
+    showChangeReport(report);
+  } else {
+    notify('変更はありません');
+  }
 }
 
 window.openLocalFolder=function(){
@@ -2050,6 +2106,22 @@ window.openInExplorer=function(){
   navigator.clipboard.writeText(filePath).then(()=>{
     notify('コピーしました: '+filePath);
   });
+}
+
+function showChangeReport(items){
+  const bg=document.createElement('div');
+  bg.className='change-report-bg';
+  const box=document.createElement('div');
+  box.className='change-report';
+  box.innerHTML=`<div class="change-report-title">🔄 更新内容</div>`+
+    items.map(item=>{
+      const isRemove=item.includes('削除');
+      return `<div class="change-report-item ${isRemove?'removed':'added'}">${item}</div>`;
+    }).join('')+
+    `<button class="btn btn-primary change-report-close" onclick="this.parentElement.remove();document.querySelector('.change-report-bg').remove()">OK</button>`;
+  document.body.appendChild(bg);
+  document.body.appendChild(box);
+  bg.onclick=()=>{bg.remove();box.remove()};
 }
 
 document.getElementById('searchInput').addEventListener('input',renderGrid);
