@@ -257,7 +257,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 <!-- ACCESS DENIED SCREEN -->
 <div class="login-screen hidden" id="deniedScreen">
   <div class="login-box">
-    <div class="login-logo">OGREF<span>_Beta</span></div>
+    <div class="login-logo">OGREF<span>_Beta.0.0.1</span></div>
     <div class="login-sub" style="margin-bottom:24px">このアプリへのアクセス権がありません。<br>管理者に招待を依頼してください。</div>
     <div id="deniedEmail" style="font-size:13px;color:var(--text3);margin-bottom:24px"></div>
     <button class="btn btn-ghost" onclick="logoutUser()" style="margin:0 auto">別のアカウントでログイン</button>
@@ -267,7 +267,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 <!-- LOGIN SCREEN -->
 <div class="login-screen hidden" id="loginScreen">
   <div class="login-box">
-    <div class="login-logo">OGREF<span>_Beta</span></div>
+    <div class="login-logo">OGREF<span>_Beta.0.0.1</span></div>
     <div class="login-sub">アニメーション作業用<br>動画素材管理ツール</div>
     <button class="google-btn" onclick="loginWithGoogle()">
       <svg class="google-icon" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
@@ -279,7 +279,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 <!-- WORKSPACE SCREEN -->
 <div class="ws-screen hidden" id="wsScreen">
   <div class="ws-box">
-    <div class="ws-logo" style="margin-bottom:16px">OGREF<span>_Beta</span></div>
+    <div class="ws-logo" style="margin-bottom:16px">OGREF<span>_Beta.0.0.1</span></div>
     <div class="ws-user" id="wsUserInfo"></div>
 
     <div class="ws-section">
@@ -329,7 +329,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 
 <!-- MAIN APP -->
 <div class="header">
-  <div class="logo">OGREF<span>_Beta</span></div>
+  <div class="logo">OGREF<span>_Beta.0.0.1</span></div>
   <button class="ws-switcher" onclick="showWsScreen()" id="wsSwitcher">
     <span class="ws-switcher-dot" id="wsSwitcherDot"></span>
     <span id="wsSwitcherName">-</span>
@@ -411,6 +411,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
       <div class="right-panel-tags" id="rpTags"></div>
       <div class="right-panel-actions">
         <button class="btn btn-primary" onclick="expandToModal()" style="font-size:12px">⛶ 拡大表示</button>
+        <button class="btn btn-ghost" onclick="copyVideoLink()" style="font-size:12px">🔗 リンク</button>
         <button class="btn btn-ghost" onclick="editFromPanel()" style="font-size:12px">✏️ 編集</button>
         <button class="btn btn-ghost" onclick="openPanelUrl()" style="font-size:12px">↗ 元ページ</button>
         <button class="btn btn-ghost" id="rpExplorerBtn" onclick="openInExplorer()" style="font-size:12px;display:none">📂 Explorerで開く</button>
@@ -623,6 +624,19 @@ onAuthStateChanged(auth, async user=>{
     }
     // Show admin button if admin
     // admin check done in loadAndShowWsScreen
+    // Check URL hash for direct video link
+    const hashParams=parseHash();
+    if(hashParams&&hashParams.ws&&hashParams.v){
+      pendingVideoId=hashParams.v;
+      try{
+        const wsSnap=await getDoc(doc(db,'workspaces',hashParams.ws));
+        if(wsSnap.exists()){
+          const wsData=wsSnap.data();
+          enterWorkspace(hashParams.ws, wsData.name, wsData.code, '#7c6fff');
+          return;
+        }
+      }catch(e){}
+    }
     // Try to restore last workspace
     const lastWsRaw=localStorage.getItem('ogref_last_ws');
     if(lastWsRaw){
@@ -951,7 +965,7 @@ function startListeners(){
   if(unsubFolders)unsubFolders();
   unsubVideos=onSnapshot(
     query(collection(db,'workspaces',currentWsId,'videos'),orderBy('createdAt','desc')),
-    snap=>{videos=snap.docs.map(d=>({id:d.id,...d.data()}));renderAll();}
+    snap=>{videos=snap.docs.map(d=>({id:d.id,...d.data()}));renderAll();checkPendingVideo();}
   );
   unsubFolders=onSnapshot(
     collection(db,'workspaces',currentWsId,'folders'),
@@ -1989,6 +2003,7 @@ window.openPlayer=function(id){
   document.getElementById('rpTags').innerHTML=(v.tags||[]).map(t=>`<span class="vcard-tag">${t}</span>`).join('');
   document.getElementById('rpExplorerBtn').style.display=v.platform==='local'?'':' none';
   panel.classList.add('open');
+  updateHash();
 }
 
 window.switchPanelQuality=async function(name,hd){
@@ -2014,6 +2029,7 @@ window.closeRightPanel=function(){
   const player=document.getElementById('rpPlayer');
   player.innerHTML='';
   panel.classList.remove('open');
+  history.replaceState(null,'',location.pathname);
 }
 
 window.expandToModal=function(){
@@ -2120,6 +2136,40 @@ window.openInExplorer=function(){
   navigator.clipboard.writeText(filePath).then(()=>{
     notify('コピーしました: '+filePath);
   });
+}
+
+// ── Video URL Sharing ──
+window.copyVideoLink=function(){
+  if(!state.currentPlayId||!currentWsId)return;
+  const url=location.origin+location.pathname+'#ws='+currentWsId+'&v='+state.currentPlayId;
+  navigator.clipboard.writeText(url).then(()=>notify('リンクをコピーしました'));
+}
+
+// Update hash when opening video
+function updateHash(){
+  if(state.currentPlayId&&currentWsId){
+    history.replaceState(null,'','#ws='+currentWsId+'&v='+state.currentPlayId);
+  }
+}
+
+// Parse hash on load
+function parseHash(){
+  const h=location.hash.slice(1);
+  if(!h)return null;
+  const params={};
+  h.split('&').forEach(p=>{const[k,v]=p.split('=');if(k&&v)params[k]=v;});
+  return params;
+}
+
+// Try to open video from hash after workspace loads
+let pendingVideoId=null;
+function checkPendingVideo(){
+  if(!pendingVideoId)return;
+  const v=videos.find(x=>x.id===pendingVideoId);
+  if(v){
+    openPlayer(v.id);
+    pendingVideoId=null;
+  }
 }
 
 function showChangeReport(items){
