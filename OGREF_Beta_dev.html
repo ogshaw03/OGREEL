@@ -455,8 +455,12 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
         <div class="tag-suggest-wrap" id="tagSuggestions"></div>
       </div>
       <div class="form-row">
-        <label class="form-label">開始時間（例: 1:30 または 90）</label>
-        <input type="text" class="form-input" id="videoStart" placeholder="0:00（省略可）">
+        <label class="form-label">再生範囲（秒数 例: 1:30 または 90）</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" class="form-input" id="videoStart" placeholder="開始 0:00" style="flex:1">
+          <span style="line-height:36px;color:var(--text3)">〜</span>
+          <input type="text" class="form-input" id="videoEnd" placeholder="終了（省略可）" style="flex:1">
+        </div>
       </div>
       <div class="form-row">
         <label class="form-label">メモ</label>
@@ -1111,6 +1115,34 @@ function secsToTime(s){
   const m=Math.floor(s/60),sec=s%60;
   return m+':'+(sec<10?'0':'')+sec;
 }
+
+// --- 再生範囲ループ管理 ---
+let _rangeTimers={};
+function clearRangeTimer(key){
+  if(_rangeTimers[key]){clearTimeout(_rangeTimers[key]);delete _rangeTimers[key];}
+}
+function clearAllRangeTimers(){
+  Object.keys(_rangeTimers).forEach(k=>{clearTimeout(_rangeTimers[k]);});
+  _rangeTimers={};
+}
+// iframe用: duration秒後にiframeを再読み込み
+function startIframeRangeLoop(key,iframeEl,duration){
+  clearRangeTimer(key);
+  if(!iframeEl||!duration||duration<=0)return;
+  _rangeTimers[key]=setTimeout(()=>{
+    if(iframeEl&&iframeEl.parentNode){iframeEl.src=iframeEl.src;}
+    startIframeRangeLoop(key,iframeEl,duration);
+  },duration*1000);
+}
+// video要素用: timeupdate で endTime 到達時に startTime へシーク
+function attachVideoRangeLoop(videoEl,startSec,endSec){
+  if(!videoEl||!endSec||endSec<=startSec)return;
+  videoEl.addEventListener('timeupdate',function(){
+    if(this.currentTime>=endSec){this.currentTime=startSec;this.play().catch(()=>{});}
+  });
+  if(startSec&&videoEl.readyState>=1){videoEl.currentTime=startSec;}
+  else if(startSec){videoEl.addEventListener('loadeddata',function(){this.currentTime=startSec;},{once:true});}
+}
 function detectPlatform(url){
   if(!url)return'other';
   if(url.startsWith('local:'))return'local';
@@ -1168,6 +1200,7 @@ window.openAddModal=function(id=null){
   document.getElementById('videoTitle').value=v?v.title:'';
   document.getElementById('videoNote').value=v?v.note||'':'';
   document.getElementById('videoStart').value=v&&v.startTime?secsToTime(v.startTime):'';
+  document.getElementById('videoEnd').value=v&&v.endTime?secsToTime(v.endTime):'';
   if(v&&v.tags)state.currentTags=[...v.tags];
   renderTagPills();
   populateFolderSelect(v?v.folder||'':'');
@@ -1232,8 +1265,9 @@ window.saveVideo=async function(){
   const folder=document.getElementById('videoFolder').value;
   const note=document.getElementById('videoNote').value.trim();
   const startTime=parseStartTime(document.getElementById('videoStart').value);
+  const endTime=parseStartTime(document.getElementById('videoEnd').value);
   const thumb=p==='vm'?document.getElementById('videoUrl').dataset.vimeoThumb||'':'';
-  const data={url,vid:vid||null,platform:p,title,tags:state.currentTags,folder,note,thumb,startTime,fav:false,createdAt:Date.now(),addedBy:currentUser.uid,addedByName:currentUser.displayName||''};
+  const data={url,vid:vid||null,platform:p,title,tags:state.currentTags,folder,note,thumb,startTime,endTime,fav:false,createdAt:Date.now(),addedBy:currentUser.uid,addedByName:currentUser.displayName||''};
   try{
     if(state.editId){
       const existing=videos.find(x=>x.id===state.editId);
@@ -1271,7 +1305,8 @@ window.toggleFav=async function(id){
 function getPlayerEmbedUrl(v){
   if(v.platform==='local'||v.platform==='ig')return null;
   const s=v.startTime||0;
-  if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&rel=0&modestbranding=1${s?`&start=${s}`:''}`;
+  const e=v.endTime||0;
+  if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&rel=0&modestbranding=1${s?`&start=${s}`:''}${e?`&end=${e}`:''}`;
   if(v.platform==='vm'&&v.vid)return`https://player.vimeo.com/video/${v.vid}?autoplay=1${s?`#t=${s}s`:''}`;
   if(v.platform==='nc'&&v.vid)return`https://embed.nicovideo.jp/watch/${v.vid}?autoplay=1`;
   if(v.platform==='gd'&&v.vid)return`https://drive.google.com/file/d/${v.vid}/preview?autoplay=1`;
@@ -1371,8 +1406,10 @@ function getEmbedUrl(v){
   if(v.platform==='local')return v.url; // handled specially in observer
   if(v.platform==='x'||v.platform==='ig')return null;
   const s=v.startTime||0;
-  if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&loop=1&playlist=${v.vid}${s?`&start=${s}`:''}`;
-  if(v.platform==='vm'&&v.vid)return`https://player.vimeo.com/video/${v.vid}?autoplay=1&muted=1&controls=0&loop=1${s?`#t=${s}s`:''}`;
+  const e=v.endTime||0;
+  const hasRange=e>s;
+  if(v.platform==='yt'&&v.vid)return`https://www.youtube.com/embed/${v.vid}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1${hasRange?'':'&loop=1&playlist='+v.vid}${s?`&start=${s}`:''}${e?`&end=${e}`:''}`;
+  if(v.platform==='vm'&&v.vid)return`https://player.vimeo.com/video/${v.vid}?autoplay=1&muted=1&controls=0${hasRange?'':'&loop=1'}${s?`#t=${s}s`:''}`;
   if(v.platform==='nc'&&v.vid)return`https://embed.nicovideo.jp/watch/${v.vid}?autoplay=1&muted=1`;
   if(v.platform==='gd'&&v.vid)return`https://drive.google.com/file/d/${v.vid}/preview?autoplay=1`;
   return null;
@@ -1385,6 +1422,9 @@ function setupObserver(){
       const embUrl=entry.target.dataset.emburl;
       const platform=entry.target.dataset.platform;
       const thumb=entry.target.querySelector('img');
+      const cardStartTime=parseInt(entry.target.dataset.starttime)||0;
+      const cardEndTime=parseInt(entry.target.dataset.endtime)||0;
+      const cardId=entry.target.dataset.vid||'';
       if(!pc||!embUrl)return;
       if(entry.isIntersecting){
         if(platform==='local'){
@@ -1406,6 +1446,9 @@ function setupObserver(){
                 video.addEventListener('loadeddata',()=>{if(thumb)thumb.style.opacity='0'});
                 pc._objUrl=objUrl;
                 pc.appendChild(video);
+                if(cardEndTime>cardStartTime){
+                  attachVideoRangeLoop(video,cardStartTime,cardEndTime);
+                }
                 video.play().catch(()=>{});
               });
             }
@@ -1422,7 +1465,11 @@ function setupObserver(){
           };
           const timer=setTimeout(showIframe,1000);
           iframe.addEventListener('load',()=>{clearTimeout(timer);setTimeout(showIframe,1000);});
-          if(platform==='nc'||platform==='gd'){
+          if(cardEndTime>cardStartTime){
+            iframe.addEventListener('load',()=>{
+              startIframeRangeLoop('grid_'+cardId,iframe,cardEndTime-cardStartTime);
+            },{once:true});
+          } else if(platform==='nc'||platform==='gd'){
             pc._loopTimer=setInterval(()=>{
               const el=pc.querySelector('iframe');
               if(el){el.src=el.src;}
@@ -1431,6 +1478,7 @@ function setupObserver(){
           pc.appendChild(iframe);
         }
       }else{
+        clearRangeTimer('grid_'+cardId);
         if(pc._loopTimer){clearInterval(pc._loopTimer);delete pc._loopTimer;}
         if(pc._objUrl){URL.revokeObjectURL(pc._objUrl);delete pc._objUrl;}
         if(thumb)thumb.style.opacity='1';
@@ -1486,7 +1534,7 @@ function makeCard(v){
       </div>`;
     card.addEventListener('click',()=>openPlayer(v.id));
   const embUrl=getEmbedUrl(v);
-  if(embUrl){card.dataset.emburl=embUrl;card.dataset.platform=v.platform;}
+  if(embUrl){card.dataset.emburl=embUrl;card.dataset.platform=v.platform;card.dataset.starttime=v.startTime||0;card.dataset.endtime=v.endTime||0;}
   return card;
 }
 
@@ -1651,6 +1699,7 @@ window.deleteFolder=async function(id,name){
 window.closeModal=function(id){
   document.getElementById(id).classList.add('hidden');
   if(id==='playerModal'){
+    clearRangeTimer('modal');
     const wrap=document.getElementById('playerIframeWrap');
     if(wrap)wrap.innerHTML='';
   }
@@ -1753,7 +1802,7 @@ window.importLocalAll=async function(silent){
       if(existingUrls.has(url))continue;
       await addDoc(collection(db,'workspaces',currentWsId,'videos'),{
         url,vid:null,platform:'local',title:fh.name.replace(/\.[^.]+$/,''),
-        tags:[],folder:'',note:'',thumb:'',startTime:0,fav:false,
+        tags:[],folder:'',note:'',thumb:'',startTime:0,endTime:0,fav:false,
         createdAt:Date.now(),addedBy:currentUser.uid,addedByName:currentUser.displayName||''
       });
     }
@@ -1764,7 +1813,7 @@ window.importLocalAll=async function(silent){
         if(existingUrls.has(url))continue;
         await addDoc(collection(db,'workspaces',currentWsId,'videos'),{
           url,vid:null,platform:'local',title:fh.name.replace(/\.[^.]+$/,''),
-          tags:[],folder:folderMap[folderName]||'',note:'',thumb:'',startTime:0,fav:false,
+          tags:[],folder:folderMap[folderName]||'',note:'',thumb:'',startTime:0,endTime:0,fav:false,
           createdAt:Date.now(),addedBy:currentUser.uid,addedByName:currentUser.displayName||''
         });
       }
@@ -1843,7 +1892,7 @@ window.refreshLocalFolder=async function(){
     if(!existingUrls.has(url)){
       await addDoc(collection(db,'workspaces',currentWsId,'videos'),{
         url,vid:null,platform:'local',title:fh.name.replace(/\.[^.]+$/,''),
-        tags:[],folder:'',note:'',thumb:'',startTime:0,fav:false,
+        tags:[],folder:'',note:'',thumb:'',startTime:0,endTime:0,fav:false,
         createdAt:Date.now(),addedBy:currentUser.uid,addedByName:currentUser.displayName||''
       });
       added++;
@@ -1861,7 +1910,7 @@ window.refreshLocalFolder=async function(){
         }
         await addDoc(collection(db,'workspaces',currentWsId,'videos'),{
           url,vid:null,platform:'local',title:fh.name.replace(/\.[^.]+$/,''),
-          tags:[],folder:folderId,note:'',thumb:'',startTime:0,fav:false,
+          tags:[],folder:folderId,note:'',thumb:'',startTime:0,endTime:0,fav:false,
           createdAt:Date.now(),addedBy:currentUser.uid,addedByName:currentUser.displayName||''
         });
         added++;
@@ -2066,7 +2115,7 @@ window.addLocalFile=async function(name){
     url:'local:'+name,
     vid:null,platform:'local',
     title,tags:[],folder:'',note:'',thumb:'',
-    startTime:0,fav:false,
+    startTime:0,endTime:0,fav:false,
     createdAt:Date.now(),
     addedBy:currentUser.uid,
     addedByName:currentUser.displayName||''
@@ -2106,6 +2155,10 @@ window.openPlayer=function(id){
     handle.getFile().then(file=>{
       const url=URL.createObjectURL(file);
       player.innerHTML=`<video src="${url}" controls autoplay preload="auto" style="position:absolute;inset:0;width:100%;height:100%;background:#000"></video>`;
+      const videoEl=player.querySelector('video');
+      if(videoEl&&v.endTime&&v.endTime>(v.startTime||0)){
+        attachVideoRangeLoop(videoEl,v.startTime||0,v.endTime);
+      }
       const hasOrig=!!origHandle;
       const hdBtn=isLow&&hasOrig?`<button class="btn btn-ghost" onclick="switchPanelQuality('${name}',true)" style="font-size:11px;padding:3px 8px">HD</button>`:'';
       const lowBtn=!isLow&&Object.keys(localLowHandles).length?`<button class="btn btn-ghost" onclick="switchPanelQuality('${name}',false)" style="font-size:11px;padding:3px 8px">360p</button>`:'';
@@ -2113,9 +2166,18 @@ window.openPlayer=function(id){
         `<span style="padding:2px 6px;border-radius:4px;font-size:10px;background:${isLow?'var(--bg4)':'var(--accent)'};color:#fff">${isLow?'360p':'HD'}</span>`+hdBtn+lowBtn;
     });
   } else {
+    clearRangeTimer('rpanel');
     const embedUrl=getPlayerEmbedUrl(v);
     if(embedUrl){
       player.innerHTML=`<iframe src="${embedUrl}" allowfullscreen allow="autoplay"></iframe>`;
+      if(v.endTime&&v.endTime>(v.startTime||0)){
+        const iframeEl=player.querySelector('iframe');
+        if(iframeEl){
+          iframeEl.addEventListener('load',()=>{
+            startIframeRangeLoop('rpanel',iframeEl,v.endTime-(v.startTime||0));
+          },{once:true});
+        }
+      }
     } else {
       player.innerHTML=`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:14px">プレビュー不可</div>`;
     }
@@ -2123,10 +2185,12 @@ window.openPlayer=function(id){
   }
 
   const folder=v.folder?folders.find(f=>f.id===v.folder):null;
+  const timeRange=(v.startTime||v.endTime)?`<span>⏱ ${secsToTime(v.startTime||0)}${v.endTime?' 〜 '+secsToTime(v.endTime):''}</span>`:'';
   document.getElementById('rpTitle').textContent=v.title||'無題';
   document.getElementById('rpMeta').innerHTML=
     `<span class="vcard-badge ${platformClass(v.platform)}" style="position:static">${platformLabel(v.platform)}</span>`+
     (folder?`<span>📁 ${folder.name}</span>`:'')+
+    timeRange+
     (v.addedByName?`<span>👤 ${v.addedByName}</span>`:'');
   const ni=document.getElementById('rpNote');
   if(v.note){ni.textContent=v.note;ni.style.display='block'}else{ni.style.display='none'}
@@ -2155,6 +2219,7 @@ window.switchPanelQuality=async function(name,hd){
 }
 
 window.closeRightPanel=function(){
+  clearRangeTimer('rpanel');
   const panel=document.getElementById('rightPanel');
   const player=document.getElementById('rpPlayer');
   player.innerHTML='';
@@ -2164,6 +2229,7 @@ window.closeRightPanel=function(){
 
 window.expandToModal=function(){
   const v=videos.find(x=>x.id===state.currentPlayId);if(!v)return;
+  clearRangeTimer('modal');
   const modal=document.getElementById('playerModal');
   const wrap=document.getElementById('playerIframeWrap');
 
@@ -2178,6 +2244,10 @@ window.expandToModal=function(){
         const url=URL.createObjectURL(file);
         wrap.innerHTML=`<video src="${url}" controls autoplay style="position:absolute;inset:0;width:100%;height:100%;background:#000"></video>`;
         wrap.style.display='block';
+        const videoEl=wrap.querySelector('video');
+        if(videoEl&&v.endTime&&v.endTime>(v.startTime||0)){
+          attachVideoRangeLoop(videoEl,v.startTime||0,v.endTime);
+        }
       });
     } else {
       wrap.innerHTML='';wrap.style.display='none';
@@ -2187,6 +2257,14 @@ window.expandToModal=function(){
     if(embedUrl){
       wrap.innerHTML=`<iframe src="${embedUrl}" allowfullscreen allow="autoplay" style="position:absolute;inset:0;width:100%;height:100%;border:none"></iframe>`;
       wrap.style.display='block';
+      if(v.endTime&&v.endTime>(v.startTime||0)){
+        const iframeEl=wrap.querySelector('iframe');
+        if(iframeEl){
+          iframeEl.addEventListener('load',()=>{
+            startIframeRangeLoop('modal',iframeEl,v.endTime-(v.startTime||0));
+          },{once:true});
+        }
+      }
     } else {
       wrap.innerHTML='';wrap.style.display='none';
     }
