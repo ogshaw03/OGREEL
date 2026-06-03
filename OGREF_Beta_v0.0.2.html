@@ -732,108 +732,116 @@ window.openAccessManager=function(){
   win._currentUser=currentUser;
   win._updateDoc=updateDoc;
   win._getDoc=getDoc;
-  win._setDoc=setDoc;
-  win.document.write(`<!DOCTYPE html><html lang="ja"><head>
-<meta charset="UTF-8"><title>アクセス管理 — OGREF</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0d0d0f;--bg2:#141416;--bg3:#1c1c1f;--bg4:#232327;--border:#2a2a2f;--border2:#3a3a42;--text:#e8e8ec;--text2:#9a9aaa;--text3:#5a5a6a;--accent:#7c6fff;--red:#ff5a5a;--green:#5affa0;--radius:10px;--radius2:6px;--font-head:'Syne',sans-serif;--font-body:'Noto Sans JP',sans-serif}
-body{background:var(--bg);color:var(--text);font-family:var(--font-body);padding:24px;min-height:100vh}
-button{cursor:pointer;border:none;background:none;color:inherit;font-family:inherit}
-input{font-family:var(--font-body);color:var(--text);background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:8px 12px;outline:none;font-size:13px}
-input:focus{border-color:var(--accent)}
-.title{font-family:var(--font-head);font-size:20px;font-weight:700;letter-spacing:2px;margin-bottom:4px}.title span{color:var(--accent)}
-.sub{font-size:12px;color:var(--text3);margin-bottom:24px}
-.label{font-size:10px;font-weight:500;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px}
-.row{display:flex;gap:8px;margin-bottom:12px}.row input{flex:1}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--radius2);font-size:13px;font-weight:500;cursor:pointer}
-.btn-primary{background:var(--accent);color:#fff}.btn-ghost{border:1px solid var(--border);color:var(--text2)}
-.list{display:flex;flex-direction:column;gap:6px}
-.user-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);font-size:13px}
-.user-email{flex:1;color:var(--text2)}
-.role-badge{font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(124,111,255,.2);color:#7c6fff;border:1px solid rgba(124,111,255,.4)}
-.act-btn{font-size:12px;color:var(--text3);padding:3px 7px;border-radius:4px}.act-btn:hover{color:var(--red);background:rgba(255,90,90,.1)}
-.note{font-size:11px;color:var(--text3);line-height:1.8;margin-top:12px}
-.notif{position:fixed;bottom:20px;right:20px;background:var(--bg4);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 16px;font-size:13px;display:none}
-</style>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=Noto+Sans+JP:wght@300;400&display=swap" rel="stylesheet">
-</head><body>
-<div class="title">OGREF<span>_Beta</span></div>
-<div class="sub">アクセス管理（管理者専用）</div>
-<div class="label">メンバーを追加</div>
-<div class="row">
-  <input type="email" id="newEmail" placeholder="許可するメールアドレス">
-  <button class="btn btn-primary" onclick="addUser()">追加</button>
-</div>
-<div class="label" style="margin-top:16px">許可ユーザー一覧</div>
-<div class="list" id="userList"><div style="color:var(--text3);font-size:13px">読み込み中...</div></div>
-<div class="note">※ 管理者は常にアクセス可能です。<br>追加したメールアドレスのGoogleアカウントのみアクセスできます。</div>
-<div id="notif" class="notif"></div>
-<script>
-const opener=window.opener;
-const db=opener._accessDb;
-const ACCESS_DOC=opener._accessDoc;
-const currentUser=opener._currentUser;
-const updateDoc=opener._updateDoc;
-const getDoc=opener._getDoc;
-function notify(msg){const n=document.getElementById('notif');n.textContent=msg;n.style.display='block';setTimeout(()=>n.style.display='none',2200)}
-async function render(){
-  const snap=await getDoc(ACCESS_DOC);
-  const data=snap.data()||{};
-  const admins=[...(data.adminEmails||[])];
-  if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);
-  const members=(data.allowedEmails||[]);
-  const list=document.getElementById('userList');
-  list.innerHTML='';
-  admins.forEach(email=>{
-    const isSelf=email===currentUser.email;
-    list.innerHTML+=\`<div class="user-item"><span class="user-email">\${email}\${isSelf?' (自分)':''}</span><span class="role-badge">管理者</span>\${!isSelf?\`<button class="act-btn" onclick="demote('\${email}')">↓</button>\`:''}<button class="act-btn" onclick="remove('\${email}',true)">✕</button></div>\`;
-  });
-  members.forEach(email=>{
-    list.innerHTML+=\`<div class="user-item"><span class="user-email">\${email}</span><button class="act-btn" onclick="promote('\${email}')">↑</button><button class="act-btn" onclick="remove('\${email}')">✕</button></div>\`;
-  });
-  if(!admins.length&&!members.length)list.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px">許可ユーザーはいません</div>';
-}
-async function addUser(){
-  const email=document.getElementById('newEmail').value.trim().toLowerCase();
-  if(!email){notify('メールアドレスを入力してください');return}
-  const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};
-  const admins=[...(data.adminEmails||[])];if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);
-  const members=[...(data.allowedEmails||[])];
-  if(admins.includes(email)||members.includes(email)){notify('既に追加されています');return}
-  members.push(email);
-  await updateDoc(ACCESS_DOC,{allowedEmails:members});
-  document.getElementById('newEmail').value='';
-  await render();notify('追加しました: '+email);
-}
-async function promote(email){
-  if(!confirm(email+' を管理者に昇格しますか？'))return;
-  const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};
-  const admins=[...(data.adminEmails||[])];if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);
-  if(!admins.includes(email))admins.push(email);
-  const members=(data.allowedEmails||[]).filter(e=>e!==email);
-  await updateDoc(ACCESS_DOC,{adminEmails:admins,allowedEmails:members});
-  await render();notify('昇格しました');
-}
-async function demote(email){
-  if(!confirm(email+' をメンバーに変更しますか？'))return;
-  const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};
-  const admins=(data.adminEmails||[]).filter(e=>e!==email);
-  const members=[...(data.allowedEmails||[])];if(!members.includes(email))members.push(email);
-  await updateDoc(ACCESS_DOC,{adminEmails:admins,allowedEmails:members});
-  await render();notify('変更しました');
-}
-async function remove(email,isAdmin=false){
-  if(!confirm(email+' を削除しますか？'))return;
-  const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};
-  const update={};
-  if(isAdmin){update.adminEmails=(data.adminEmails||[]).filter(e=>e!==email)}
-  else{update.allowedEmails=(data.allowedEmails||[]).filter(e=>e!==email)}
-  await updateDoc(ACCESS_DOC,update);
-  await render();notify('削除しました');
-}
-render();
-</script></body></html>`);
+  const html='<!DOCTYPE html><html lang="ja"><head>'
+    +'<meta charset="UTF-8"><title>アクセス管理 — OGREF</title>'
+    +'<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=Noto+Sans+JP:wght@300;400&display=swap" rel="stylesheet">'
+    +'<style>'
+    +'*{margin:0;padding:0;box-sizing:border-box}'
+    +':root{--bg:#0d0d0f;--bg2:#141416;--bg3:#1c1c1f;--bg4:#232327;--border:#2a2a2f;--border2:#3a3a42;--text:#e8e8ec;--text2:#9a9aaa;--text3:#5a5a6a;--accent:#7c6fff;--red:#ff5a5a;--radius:10px;--radius2:6px}'
+    +'body{background:var(--bg);color:var(--text);font-family:"Noto Sans JP",sans-serif;padding:24px;min-height:100vh}'
+    +'button{cursor:pointer;border:none;background:none;color:inherit;font-family:inherit}'
+    +'input{font-family:inherit;color:var(--text);background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:8px 12px;outline:none;font-size:13px;width:100%}'
+    +'input:focus{border-color:var(--accent)}'
+    +'.ttl{font-family:"Syne",sans-serif;font-size:20px;font-weight:700;letter-spacing:2px;margin-bottom:4px}'
+    +'.ttl span{color:var(--accent)}'
+    +'.sub{font-size:12px;color:var(--text3);margin-bottom:24px}'
+    +'.lbl{font-size:10px;font-weight:500;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px}'
+    +'.row{display:flex;gap:8px;margin-bottom:12px}'
+    +'.row input{flex:1}'
+    +'.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--radius2);font-size:13px;font-weight:500;cursor:pointer;border:none}'
+    +'.btn-p{background:var(--accent);color:#fff}'
+    +'.list{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}'
+    +'.urow{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);font-size:13px}'
+    +'.uemail{flex:1;color:var(--text2)}'
+    +'.rbadge{font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(124,111,255,.2);color:#7c6fff;border:1px solid rgba(124,111,255,.4)}'
+    +'.abtn{font-size:12px;color:var(--text3);padding:3px 7px;border-radius:4px;cursor:pointer;border:none;background:none}'
+    +'.abtn:hover{color:var(--red);background:rgba(255,90,90,.1)}'
+    +'.note{font-size:11px;color:var(--text3);line-height:1.8;margin-top:8px}'
+    +'.notif{position:fixed;bottom:20px;right:20px;background:var(--bg4);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 16px;font-size:13px;display:none}'
+    +'</style></head><body>'
+    +'<div class="ttl">OGREF<span>_Beta</span></div>'
+    +'<div class="sub">アクセス管理（管理者専用）</div>'
+    +'<div class="lbl">メンバーを追加</div>'
+    +'<div class="row"><input type="email" id="newEmail" placeholder="許可するメールアドレス"><button class="btn btn-p" onclick="addUser()">追加</button></div>'
+    +'<div class="lbl" style="margin-top:16px">許可ユーザー一覧</div>'
+    +'<div class="list" id="userList"><div style="color:var(--text3);font-size:13px">読み込み中...</div></div>'
+    +'<div class="note">※ 管理者は常にアクセス可能です。<br>追加したメールアドレスのGoogleアカウントのみアクセスできます。</div>'
+    +'<div id="notif" class="notif"></div>'
+    +'<scr'+'ipt>'
+    +'const op=window.opener;'
+    +'const db=op._accessDb;'
+    +'const ACCESS_DOC=op._accessDoc;'
+    +'const currentUser=op._currentUser;'
+    +'const updateDoc=op._updateDoc;'
+    +'const getDoc=op._getDoc;'
+    +'function notify(msg){const n=document.getElementById("notif");n.textContent=msg;n.style.display="block";setTimeout(()=>n.style.display="none",2200)}'
+    +'async function render(){'
+    +'  const snap=await getDoc(ACCESS_DOC);'
+    +'  const data=snap.data()||{};'
+    +'  const admins=[...(data.adminEmails||[])];'
+    +'  if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);'
+    +'  const members=(data.allowedEmails||[]);'
+    +'  const list=document.getElementById("userList");'
+    +'  list.innerHTML="";'
+    +'  admins.forEach(email=>{'
+    +'    const isSelf=email===currentUser.email;'
+    +'    const row=document.createElement("div");row.className="urow";'
+    +'    row.innerHTML="<span class=\'uemail\'>"+email+(isSelf?" (自分)":"")+"</span><span class=\'rbadge\'>管理者</span>"'
+    +'      +(!isSelf?"<button class=\'abtn\' onclick=\'demote(\\""+email+"\\")\'">↓</button>":"")'
+    +'      +"<button class=\'abtn\' onclick=\'remove(\\""+email+"\\",true)\'>✕</button>";'
+    +'    list.appendChild(row);'
+    +'  });'
+    +'  members.forEach(email=>{'
+    +'    const row=document.createElement("div");row.className="urow";'
+    +'    row.innerHTML="<span class=\'uemail\'>"+email+"</span>"'
+    +'      +"<button class=\'abtn\' onclick=\'promote(\\""+email+"\\")\'">↑</button>"'
+    +'      +"<button class=\'abtn\' onclick=\'remove(\\""+email+"\\")\'">✕</button>";'
+    +'    list.appendChild(row);'
+    +'  });'
+    +'  if(!admins.length&&!members.length)list.innerHTML="<div style=\'color:var(--text3);font-size:13px;padding:8px\'>許可ユーザーはいません</div>";'
+    +'}'
+    +'async function addUser(){'
+    +'  const email=document.getElementById("newEmail").value.trim().toLowerCase();'
+    +'  if(!email){notify("メールアドレスを入力してください");return}'
+    +'  const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};'
+    +'  const admins=[...(data.adminEmails||[])];if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);'
+    +'  const members=[...(data.allowedEmails||[])];'
+    +'  if(admins.includes(email)||members.includes(email)){notify("既に追加されています");return}'
+    +'  members.push(email);'
+    +'  await updateDoc(ACCESS_DOC,{allowedEmails:members});'
+    +'  document.getElementById("newEmail").value="";'
+    +'  await render();notify("追加しました: "+email);'
+    +'}'
+    +'async function promote(email){'
+    +'  if(!confirm(email+" を管理者に昇格しますか？"))return;'
+    +'  const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};'
+    +'  const admins=[...(data.adminEmails||[])];if(data.adminEmail&&!admins.includes(data.adminEmail))admins.push(data.adminEmail);'
+    +'  if(!admins.includes(email))admins.push(email);'
+    +'  const members=(data.allowedEmails||[]).filter(e=>e!==email);'
+    +'  await updateDoc(ACCESS_DOC,{adminEmails:admins,allowedEmails:members});'
+    +'  await render();notify("昇格しました");'
+    +'}'
+    +'async function demote(email){'
+    +'  if(!confirm(email+" をメンバーに変更しますか？"))return;'
+    +'  const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};'
+    +'  const admins=(data.adminEmails||[]).filter(e=>e!==email);'
+    +'  const members=[...(data.allowedEmails||[])];if(!members.includes(email))members.push(email);'
+    +'  await updateDoc(ACCESS_DOC,{adminEmails:admins,allowedEmails:members});'
+    +'  await render();notify("変更しました");'
+    +'}'
+    +'async function remove(email,isAdmin){'
+    +'  if(!confirm(email+" を削除しますか？"))return;'
+    +'  const snap=await getDoc(ACCESS_DOC);const data=snap.data()||{};'
+    +'  const upd={};'
+    +'  if(isAdmin){upd.adminEmails=(data.adminEmails||[]).filter(e=>e!==email)}'
+    +'  else{upd.allowedEmails=(data.allowedEmails||[]).filter(e=>e!==email)}'
+    +'  await updateDoc(ACCESS_DOC,upd);'
+    +'  await render();notify("削除しました");'
+    +'}'
+    +'render();'
+    +'</sc'+'ript></body></html>';
+  win.document.open();
+  win.document.write(html);
   win.document.close();
 }
 
