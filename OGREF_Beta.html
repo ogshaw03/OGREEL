@@ -1128,6 +1128,16 @@ window.saveVideo=async function(){
       const existing=videos.find(x=>x.id===state.editId);
       await updateDoc(doc(db,'workspaces',currentWsId,'videos',state.editId),{...data,fav:existing?existing.fav:false});
     }else{
+      // Duplicate check
+      const dup=videos.find(x=>x.url===url||(vid&&x.vid===vid&&x.platform===p));
+      if(dup){
+        const dupFolder=dup.folder?folders.find(f=>f.id===dup.folder):null;
+        const msg='この動画は既に登録されています\n\n'+
+          'タイトル: '+dup.title+'\n'+
+          (dupFolder?'フォルダ: '+dupFolder.name+'\n':'')+
+          '\nそれでも追加しますか？';
+        if(!confirm(msg))return;
+      }
       await addDoc(collection(db,'workspaces',currentWsId,'videos'),data);
     }
     closeModal('addModal');notify('保存しました');
