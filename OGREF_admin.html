@@ -344,11 +344,10 @@ function renderAccess(data){
   const opList=$('opList'), adminList=$('adminList'), memberList=$('memberList');
   opList.innerHTML='';adminList.innerHTML='';memberList.innerHTML='';
   operators.forEach(email=>{
-    const isSelf=currentUser&&email===currentUser.email;
     opList.appendChild(mkRow(email,{cls:'op',label:'運営'},[
-      ['→管理者',()=>setRole(email,'admin'),false,isSelf],
-      ['→メンバー',()=>setRole(email,'member'),false,isSelf],
-      ['削除',()=>setRole(email,'remove'),true,isSelf]
+      ['→管理者',()=>setRole(email,'admin')],
+      ['→メンバー',()=>setRole(email,'member')],
+      ['削除',()=>setRole(email,'remove'),true]
     ]));
   });
   if(!operators.length)opList.innerHTML='<div class="empty">運営ユーザーはいません</div>';
@@ -374,15 +373,19 @@ async function readConfig(){const snap=await getDoc(configRef());return snap.exi
 const roleLabel={operator:'運営ユーザー',admin:'管理者',member:'メンバー',remove:'削除'};
 async function setRole(email,target){
   if(!isOperator)return notify('運営ユーザーのみ実行できます');
+  const data=await readConfig();
+  const curOperators=operatorListFrom(data);
+  // 最後の運営ユーザーは降格・削除できない（運営ゼロ＝ロック/不整合を防止）
+  if(target!=='operator' && curOperators.includes(email) && curOperators.length<=1){
+    return notify('最後の運営ユーザーは降格・削除できません。先に別の運営ユーザーを追加してください。');
+  }
   if(email===currentUser.email && target!=='operator'){
     if(!confirm('自分自身の権限を変更します。コンソールを操作できなくなる可能性があります。続行しますか？'))return;
   } else if(target==='remove'){
     if(!confirm(`${email} を削除しますか？`))return;
   }
   try{
-    const data=await readConfig();
-    // 実効運営を維持（移行時のfallbackを確定化）。対象は一旦全区分から除去
-    let operators=operatorListFrom(data).filter(e=>e!==email);
+    let operators=curOperators.filter(e=>e!==email);
     let admins=adminListRaw(data).filter(e=>e!==email && !operators.includes(e));
     let members=[...((data.allowedEmails)||[])].filter(e=>e!==email && !operators.includes(e) && !admins.includes(e));
     if(target==='operator')operators.push(email);
