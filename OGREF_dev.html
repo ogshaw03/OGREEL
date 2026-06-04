@@ -623,7 +623,7 @@ const COLOR_HEX={purple:'#7c6fff',blue:'#5a8fff',green:'#5affa0',amber:'#ffb85a'
 const WS_COLORS=['#7c6fff','#5a8fff','#5affa0','#ffb85a','#ff5a5a','#ff5aaa'];
 
 let videos=[], folders=[];
-let autoplayEnabled=localStorage.getItem('ogref_autoplay')!=='false';
+let autoplayEnabled=localStorage.getItem('ogref_dev_autoplay')!=='false';
 let localVideoSnapshot=null;
 let state={filter:'all',folder:null,tag:null,view:'grid',editId:null,editFolderId:null,currentTags:[],selectedColor:'purple',currentPlayId:null,folderPath:[],folderIds:null,folderSel:null};
 let currentUser=null;
@@ -662,7 +662,7 @@ onAuthStateChanged(auth, async user=>{
       }catch(e){}
     }
     // Try to restore last workspace
-    const lastWsRaw=localStorage.getItem('ogref_last_ws');
+    const lastWsRaw=localStorage.getItem('ogref_dev_last_ws');
     if(lastWsRaw){
       try{
         const last=JSON.parse(lastWsRaw);
@@ -695,7 +695,7 @@ window.logoutUser=async function(){
   if(!confirm('ログアウトしますか？'))return;
   if(unsubVideos)unsubVideos();
   if(unsubFolders)unsubFolders();
-  localStorage.removeItem('ogref_last_ws');
+  localStorage.removeItem('ogref_dev_last_ws');
   await signOut(auth);
 }
 
@@ -926,23 +926,24 @@ async function removeUserWorkspace(wsId){
 
 // ── Workspace Screen ──
 async function loadAndShowWsScreen(){
-  renderWsUserInfo();
-  const list=await getUserWorkspaces();
-  renderWsList(list);
-  // Show admin section if admin
-  const access=await checkAccess(currentUser);
-  if(access==='admin'){
-    document.getElementById('adminSection').style.display='';
-  } else {
-    document.getElementById('adminSection').style.display='none';
-  }
+  // 先にWS選択画面を表示（Firestoreエラーでも画面に到達できるように）
   document.getElementById('wsScreen').classList.remove('hidden');
+  renderWsUserInfo();
+  let list=[];
+  try{ list=await getUserWorkspaces(); }catch(e){ notify('ワークスペース取得エラー: '+e.message); }
+  renderWsList(list);
+  try{
+    const access=await checkAccess(currentUser);
+    document.getElementById('adminSection').style.display=(access==='admin')?'':'none';
+  }catch(e){ document.getElementById('adminSection').style.display='none'; }
 }
 
 window.showWsScreen=async function(){
   if(unsubVideos){unsubVideos();unsubVideos=null}
   if(unsubFolders){unsubFolders();unsubFolders=null}
-  await loadAndShowWsScreen();
+  currentWsId=null; currentWsName=null; currentWsCode=null;
+  document.getElementById('wsScreen').classList.remove('hidden');
+  try{ await loadAndShowWsScreen(); }catch(e){ notify('読み込みエラー: '+e.message); }
 }
 
 function renderWsUserInfo(){
@@ -994,7 +995,7 @@ window.renameWorkspace=async function(id, currentName){
     if(currentWsId===id){
       currentWsName=newName.trim();
       document.getElementById('wsSwitcherName').textContent=newName.trim();
-      localStorage.setItem('ogref_last_ws',JSON.stringify({id,name:newName.trim(),code:currentWsCode,color:''}));
+      localStorage.setItem('ogref_dev_last_ws',JSON.stringify({id,name:newName.trim(),code:currentWsCode,color:''}));
     }
     notify('リネームしました: '+newName.trim());
     const list=await getUserWorkspaces();
@@ -1063,7 +1064,7 @@ window.deleteWorkspace=async function(id, name){
 
 function enterWorkspace(id, name, code, color){
   currentWsId=id; currentWsName=name; currentWsCode=code;
-  localStorage.setItem('ogref_last_ws',JSON.stringify({id,name,code,color}));
+  localStorage.setItem('ogref_dev_last_ws',JSON.stringify({id,name,code,color}));
   document.getElementById('wsScreen').classList.add('hidden');
   document.getElementById('wsSwitcherName').textContent=name;
   document.getElementById('wsSwitcherDot').style.background=color||'#7c6fff';
@@ -1531,7 +1532,7 @@ function getFiltered(){
 
 window.toggleAutoplay=function(){
   autoplayEnabled=!autoplayEnabled;
-  localStorage.setItem('ogref_autoplay',autoplayEnabled);
+  localStorage.setItem('ogref_dev_autoplay',autoplayEnabled);
   document.getElementById('autoplayIcon').textContent=autoplayEnabled?'▶':'⏸';
   document.getElementById('autoplayLabel').textContent=autoplayEnabled?'自動再生 ON':'サムネ表示';
   document.getElementById('autoplayToggle').style.color=autoplayEnabled?'var(--green)':'var(--text2)';
@@ -1836,7 +1837,7 @@ let currentLowDirHandle=null;
 // IndexedDB for persisting directory handles per workspace
 function idbOpen(){
   return new Promise((res,rej)=>{
-    const req=indexedDB.open('ogref_handles',1);
+    const req=indexedDB.open('ogref_dev_handles',1);
     req.onupgradeneeded=()=>req.result.createObjectStore('handles');
     req.onsuccess=()=>res(req.result);
     req.onerror=()=>rej(req.error);
