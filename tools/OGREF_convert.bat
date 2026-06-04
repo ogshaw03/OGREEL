@@ -41,7 +41,13 @@ echo.
 
 where ffmpeg >nul 2>nul
 if errorlevel 1 (
-  echo [ERROR] ffmpeg not found. Install from https://ffmpeg.org and add it to PATH.
+  echo [ERROR] ffmpeg not found. Install it, then run again:
+  echo.
+  echo   Easiest ^(Windows 10/11^):  winget install Gyan.FFmpeg
+  echo   then CLOSE this window, open a NEW one, and try again.
+  echo.
+  echo   Or download from https://ffmpeg.org/download.html ,
+  echo   extract, and add its "bin" folder to PATH.
   pause
   exit /b 1
 )
