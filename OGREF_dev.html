@@ -630,7 +630,7 @@ let currentUser=null;
 let currentWsId=null;
 let currentWsName=null;
 let currentWsCode=null;
-let unsubVideos=null, unsubFolders=null;
+let unsubVideos=null, unsubFolders=null, unsubWs=null;
 
 // ── Auth State ──
 onAuthStateChanged(auth, async user=>{
@@ -695,6 +695,7 @@ window.logoutUser=async function(){
   if(!confirm('ログアウトしますか？'))return;
   if(unsubVideos)unsubVideos();
   if(unsubFolders)unsubFolders();
+  if(unsubWs)unsubWs();
   localStorage.removeItem('ogref_dev_last_ws');
   await signOut(auth);
 }
@@ -941,6 +942,7 @@ async function loadAndShowWsScreen(){
 window.showWsScreen=async function(){
   if(unsubVideos){unsubVideos();unsubVideos=null}
   if(unsubFolders){unsubFolders();unsubFolders=null}
+  if(unsubWs){unsubWs();unsubWs=null}
   currentWsId=null; currentWsName=null; currentWsCode=null;
   document.getElementById('wsScreen').classList.remove('hidden');
   try{ await loadAndShowWsScreen(); }catch(e){ notify('読み込みエラー: '+e.message); }
@@ -1079,7 +1081,9 @@ function enterWorkspace(id, name, code, color){
   }).catch(()=>{isWsCreator=false});
   localFileHandles={};
   localLowHandles={};
+  currentDirHandle=null;
   currentLowDirHandle=null;
+  window._localScan=null;
   tryRestoreFolder();
 }
 
@@ -1096,6 +1100,8 @@ function initLocalSnapshot(){
 function startListeners(){
   if(unsubVideos)unsubVideos();
   if(unsubFolders)unsubFolders();
+  if(unsubWs)unsubWs();
+  unsubWs=onSnapshot(doc(db,C_WS,currentWsId), snap=>{ applyWsDocData(snap.data()||{}); });
   unsubVideos=onSnapshot(
     query(collection(db,C_WS,currentWsId,'videos'),orderBy('createdAt','desc')),
     snap=>{videos=snap.docs.map(d=>({id:d.id,...d.data()}));renderAll();checkPendingVideo();}
@@ -2409,6 +2415,7 @@ let cachedLowPath='';
 window.saveLowPath=async function(){
   const val=document.getElementById('localLowPath').value.trim();
   if(!currentWsId)return;
+  if(!isWsCreator){notify('作成者のみ変更できます');loadBasePath();return}
   try{
     await updateDoc(doc(db,C_WS,currentWsId),{localLowPath:val});
     cachedLowPath=val;
@@ -2419,6 +2426,7 @@ window.saveLowPath=async function(){
 window.saveBasePath=async function(){
   const val=document.getElementById('localBasePath').value.trim();
   if(!currentWsId)return;
+  if(!isWsCreator){notify('作成者のみ変更できます');loadBasePath();return}
   try{
     await updateDoc(doc(db,C_WS,currentWsId),{localBasePath:val});
     cachedBasePath=val;
@@ -2430,23 +2438,30 @@ function getBasePath(){
   return cachedBasePath||'';
 }
 
+// WSドキュメントの内容をUI/キャッシュへ反映（作成者のみ編集可、参加者は自動反映）
+function applyWsDocData(data){
+  if(!data)return;
+  if(currentUser)isWsCreator=(data.createdBy===currentUser.uid);
+  cachedBasePath=data.localBasePath||'';
+  cachedLowPath=data.localLowPath||'';
+  const input=document.getElementById('localBasePath');
+  const lowInput=document.getElementById('localLowPath');
+  if(input)input.value=cachedBasePath;
+  if(lowInput)lowInput.value=cachedLowPath;
+  [input,lowInput].forEach(el=>{
+    if(!el)return;
+    if(isWsCreator){el.removeAttribute('readonly');el.style.opacity='1';el.title='';}
+    else{el.setAttribute('readonly',true);el.style.opacity='.6';el.title='作成者が指定したパスが自動反映されます（変更は作成者のみ）';}
+  });
+}
 async function loadBasePath(){
   const input=document.getElementById('localBasePath');
   const lowInput=document.getElementById('localLowPath');
-  if(!currentWsId){input.value='';lowInput.value='';return}
+  if(!currentWsId){cachedBasePath='';cachedLowPath='';if(input)input.value='';if(lowInput)lowInput.value='';return}
   try{
     const snap=await getDoc(doc(db,C_WS,currentWsId));
-    const data=snap.data()||{};
-    cachedBasePath=data.localBasePath||'';
-    cachedLowPath=data.localLowPath||'';
-    input.value=cachedBasePath;
-    lowInput.value=cachedLowPath;
-    const isCreator=data.createdBy===currentUser.uid;
-    [input,lowInput].forEach(el=>{
-      if(isCreator){el.removeAttribute('readonly');el.style.opacity='1'}
-      else{el.setAttribute('readonly',true);el.style.opacity='.6'}
-    });
-  }catch(e){cachedBasePath='';cachedLowPath='';input.value='';lowInput.value=''}
+    applyWsDocData(snap.data()||{});
+  }catch(e){cachedBasePath='';cachedLowPath='';if(input)input.value='';if(lowInput)lowInput.value=''}
 }
 
 window.openInExplorer=function(){
