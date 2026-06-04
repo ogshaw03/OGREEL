@@ -2,31 +2,32 @@
 chcp 65001 >nul
 setlocal enabledelayedexpansion
 REM ============================================================
-REM  OGREF 用 動画一括変換バッチ（HEVC等の.mov → 再生可能なH.264 .mp4）
+REM  OGREF video converter : HEVC/etc .mov -> playable H.264 .mp4
 REM
-REM  使い方は2通り:
-REM   (A) このバッチに「変換したいフォルダ」をドラッグ＆ドロップする
-REM        → 同じ場所に「<フォルダ名>_low」を作り、そこへ変換結果を出力
-REM   (B) 下の「設定」のSRC/DSTを書き換えてダブルクリック実行
+REM  How to use:
+REM   (A) Drag and drop a FOLDER onto this .bat
+REM        -> creates "<folder>_low" next to it and outputs there
+REM   (B) Edit SRC / DST below, then double-click
 REM
-REM  変換後、OGREFの「💾 ローカル」→「軽量版フォルダを選択」で
-REM  出力先フォルダ(_low)を接続すると、.movのタイルがmp4で再生されます。
+REM  After converting, in OGREF: "Local" -> "Select low-res folder"
+REM  and connect the output (_low) folder. The .mov tiles play as mp4.
 REM
-REM  ※ ffmpeg が必要です（https://ffmpeg.org でDLしPATHを通す）
+REM  Requires ffmpeg (https://ffmpeg.org , add to PATH).
+REM  (Japanese instructions: see tools/README.md)
 REM ============================================================
 
-REM ===== 設定（B方式のとき編集） =====
-set "SRC=D:\Reference\動画"
-set "DST=D:\Reference\動画_low"
-REM 画質(CRF): 小さいほど高画質・大容量（18〜28、既定23）
+REM ===== Settings (for method B) =====
+set "SRC=D:\Reference\video"
+set "DST=D:\Reference\video_low"
+REM Quality (CRF): lower = better/larger (18-28, default 23)
 set "CRF=23"
-REM 軽量化で解像度を下げる場合の例:  set "SCALE=-vf scale=-2:720"  （下げないなら空のまま）
+REM To downscale (optional), e.g.  set "SCALE=-vf scale=-2:720"   (empty = keep size)
 set "SCALE="
-REM 変換対象の拡張子（スペース区切り）
+REM Target extensions (space separated)
 set "EXTS=mov mkv avi wmv flv m4v"
-REM ====================================
+REM ===================================
 
-REM (A) フォルダをドラッグ＆ドロップした場合はそれを優先
+REM (A) If a folder was dropped, use it (preferred; works with non-ASCII paths)
 if not "%~1"=="" (
   if exist "%~1\" (
     set "SRC=%~1"
@@ -34,20 +35,19 @@ if not "%~1"=="" (
   )
 )
 
-echo 変換元: "%SRC%"
-echo 出力先: "%DST%"
+echo Source: "%SRC%"
+echo Output: "%DST%"
 echo.
 
 where ffmpeg >nul 2>nul
 if errorlevel 1 (
-  echo [エラー] ffmpeg が見つかりません。
-  echo   https://ffmpeg.org/download.html からダウンロードし、PATHを通してください。
+  echo [ERROR] ffmpeg not found. Install from https://ffmpeg.org and add it to PATH.
   pause
   exit /b 1
 )
 
 if not exist "%SRC%\" (
-  echo [エラー] 変換元フォルダが存在しません: "%SRC%"
+  echo [ERROR] Source folder does not exist: "%SRC%"
   pause
   exit /b 1
 )
@@ -60,20 +60,19 @@ set /a FAIL=0
 
 for %%E in (%EXTS%) do (
   for /r "%SRC%" %%F in (*.%%E) do (
-    REM 元ファイルのフォルダ部分から SRC を取り除いて相対パスを得る
     set "DIR=%%~dpF"
     set "REL=!DIR:%SRC%=!"
     set "OUTDIR=%DST%!REL!"
     if not exist "!OUTDIR!" mkdir "!OUTDIR!"
     set "OUT=!OUTDIR!%%~nF.mp4"
     if exist "!OUT!" (
-      echo [skip ] %%~nxF は変換済み
+      echo [skip] %%~nxF
       set /a SKIP+=1
     ) else (
-      echo [変換 ] %%F
+      echo [conv] %%F
       ffmpeg -hide_banner -loglevel error -y -i "%%F" -c:v libx264 -crf %CRF% -preset fast %SCALE% -c:a aac -movflags +faststart "!OUT!"
       if errorlevel 1 (
-        echo    [失敗] %%F
+        echo    [FAIL] %%F
         set /a FAIL+=1
       ) else (
         set /a CNT+=1
@@ -84,9 +83,9 @@ for %%E in (%EXTS%) do (
 
 echo.
 echo ============================================================
-echo  完了:  変換 !CNT! 件 / スキップ !SKIP! 件 / 失敗 !FAIL! 件
-echo  出力先: "%DST%"
-echo  OGREFの「💾 ローカル」→「軽量版フォルダを選択」で上記を接続してください。
+echo  Done.  converted !CNT!  skipped !SKIP!  failed !FAIL!
+echo  Output: "%DST%"
+echo  In OGREF: Local -^> Select low-res folder -^> connect the folder above.
 echo ============================================================
 pause
 endlocal
