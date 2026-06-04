@@ -26,8 +26,9 @@
   .btn-danger{background:rgba(255,90,90,.15);border-color:rgba(255,90,90,.4);color:#ff7a7a}
   .btn-danger:hover{background:rgba(255,90,90,.25)}
   .btn-sm{padding:4px 9px;font-size:12px}
-  input,textarea{font-family:inherit;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:9px 11px;border-radius:var(--radius2);font-size:13px;width:100%}
-  input:focus,textarea:focus{outline:none;border-color:var(--accent)}
+  input,textarea,select{font-family:inherit;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:9px 11px;border-radius:var(--radius2);font-size:13px;width:100%}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)}
+  .role.admin{background:rgba(124,111,255,.2);color:#a79dff;border:1px solid rgba(124,111,255,.4)}
 
   .overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:1000;padding:24px;text-align:center}
   .title-big{font-family:var(--font-head);font-size:26px;font-weight:800;letter-spacing:1px}
@@ -147,18 +148,25 @@
       <!-- Access management -->
       <div class="card">
         <div class="card-title">🔐 アクセス管理 / 権限付与</div>
-        <div class="card-desc">運営ユーザー(operatorEmails)とメンバー(allowedEmails)を管理します。許可したメールアドレスのGoogleアカウントがOGREFを利用できます。運営ユーザーのみがこのコンソールを操作できます。</div>
+        <div class="card-desc">3区分でアクセスを管理します。<b>運営</b>=権限付与/メンテ制御/コンソール可、<b>管理者</b>=権限付与のみ可（OGREF内のアクセス管理画面）、<b>メンバー</b>=利用のみ。許可したメールアドレスのGoogleアカウントがOGREFを利用できます。</div>
 
-        <div class="sub-label">運営ユーザー</div>
+        <div class="sub-label">運営ユーザー（権限付与・メンテ制御・コンソール可）</div>
         <div class="u-list" id="opList"></div>
 
-        <div class="sub-label">メンバー</div>
+        <div class="sub-label">管理者（権限付与のみ可）</div>
+        <div class="u-list" id="adminList"></div>
+
+        <div class="sub-label">メンバー（利用のみ）</div>
         <div class="u-list" id="memberList"></div>
 
         <label class="field-label" style="margin-top:14px">ユーザーを追加（メールアドレス）</label>
         <div class="add-row">
           <input id="newEmail" type="email" placeholder="user@example.com" autocomplete="off">
-          <label class="chk"><input type="checkbox" id="newAsOp"> 運営ユーザーとして追加</label>
+          <select id="newRole" style="width:auto;flex:0 0 auto">
+            <option value="member">メンバー</option>
+            <option value="admin">管理者</option>
+            <option value="operator">運営</option>
+          </select>
           <button class="btn btn-primary" id="addUserBtn">追加</button>
         </div>
       </div>
@@ -318,80 +326,86 @@ $('bClearBtn').onclick=async()=>{
   catch(e){notify('失敗: '+e.message)}
 };
 
-// ── Access management ──
+// ── Access management (3区分: 運営 / 管理者 / メンバー) ──
+function adminListRaw(data){const a=[...((data&&data.adminEmails)||[])];if(data&&data.adminEmail&&!a.includes(data.adminEmail))a.push(data.adminEmail);return a;}
 function renderAccess(data){
   const operators=operatorListFrom(data);
-  const members=[...((data&&data.allowedEmails)||[])].filter(e=>!operators.includes(e));
-  const opList=$('opList'), memberList=$('memberList');
-  opList.innerHTML=''; memberList.innerHTML='';
-  operators.forEach(email=>{
+  const admins=adminListRaw(data).filter(e=>!operators.includes(e));
+  const members=[...((data&&data.allowedEmails)||[])].filter(e=>!operators.includes(e)&&!admins.includes(e));
+  const mkRow=(email,role,btns)=>{
     const isSelf=currentUser&&email===currentUser.email;
     const row=document.createElement('div');row.className='u-row';
-    row.innerHTML=`<span class="u-email">${email}${isSelf?'（あなた）':''}</span><span class="role op">運営</span>`;
-    const d=document.createElement('button');d.className='btn btn-sm';d.textContent='↓メンバー';d.disabled=isSelf;d.onclick=()=>demote(email);row.appendChild(d);
-    const r=document.createElement('button');r.className='btn btn-sm btn-danger';r.textContent='削除';r.disabled=isSelf;r.onclick=()=>removeUser(email,true);row.appendChild(r);
-    opList.appendChild(row);
+    row.innerHTML=`<span class="u-email">${email}${isSelf?'（あなた）':''}</span><span class="role ${role.cls}">${role.label}</span>`;
+    btns.forEach(([label,fn,danger,disabled])=>{
+      const b=document.createElement('button');b.className='btn btn-sm'+(danger?' btn-danger':'');b.textContent=label;b.disabled=!!disabled;b.onclick=fn;row.appendChild(b);
+    });
+    return row;
+  };
+  const opList=$('opList'), adminList=$('adminList'), memberList=$('memberList');
+  opList.innerHTML='';adminList.innerHTML='';memberList.innerHTML='';
+  operators.forEach(email=>{
+    const isSelf=currentUser&&email===currentUser.email;
+    opList.appendChild(mkRow(email,{cls:'op',label:'運営'},[
+      ['→管理者',()=>setRole(email,'admin'),false,isSelf],
+      ['→メンバー',()=>setRole(email,'member'),false,isSelf],
+      ['削除',()=>setRole(email,'remove'),true,isSelf]
+    ]));
   });
   if(!operators.length)opList.innerHTML='<div class="empty">運営ユーザーはいません</div>';
+  admins.forEach(email=>{
+    adminList.appendChild(mkRow(email,{cls:'admin',label:'管理者'},[
+      ['→運営',()=>setRole(email,'operator')],
+      ['→メンバー',()=>setRole(email,'member')],
+      ['削除',()=>setRole(email,'remove'),true]
+    ]));
+  });
+  if(!admins.length)adminList.innerHTML='<div class="empty">管理者はいません</div>';
   members.forEach(email=>{
-    const row=document.createElement('div');row.className='u-row';
-    row.innerHTML=`<span class="u-email">${email}</span><span class="role member">メンバー</span>`;
-    const p=document.createElement('button');p.className='btn btn-sm';p.textContent='↑運営';p.onclick=()=>promote(email);row.appendChild(p);
-    const r=document.createElement('button');r.className='btn btn-sm btn-danger';r.textContent='削除';r.onclick=()=>removeUser(email,false);row.appendChild(r);
-    memberList.appendChild(row);
+    memberList.appendChild(mkRow(email,{cls:'member',label:'メンバー'},[
+      ['→運営',()=>setRole(email,'operator')],
+      ['→管理者',()=>setRole(email,'admin')],
+      ['削除',()=>setRole(email,'remove'),true]
+    ]));
   });
   if(!members.length)memberList.innerHTML='<div class="empty">メンバーはいません</div>';
 }
 async function readConfig(){const snap=await getDoc(configRef());return snap.exists()?snap.data():{};}
 
+const roleLabel={operator:'運営ユーザー',admin:'管理者',member:'メンバー',remove:'削除'};
+async function setRole(email,target){
+  if(!isOperator)return notify('運営ユーザーのみ実行できます');
+  if(email===currentUser.email && target!=='operator'){
+    if(!confirm('自分自身の権限を変更します。コンソールを操作できなくなる可能性があります。続行しますか？'))return;
+  } else if(target==='remove'){
+    if(!confirm(`${email} を削除しますか？`))return;
+  }
+  try{
+    const data=await readConfig();
+    // 実効運営を維持（移行時のfallbackを確定化）。対象は一旦全区分から除去
+    let operators=operatorListFrom(data).filter(e=>e!==email);
+    let admins=adminListRaw(data).filter(e=>e!==email && !operators.includes(e));
+    let members=[...((data.allowedEmails)||[])].filter(e=>e!==email && !operators.includes(e) && !admins.includes(e));
+    if(target==='operator')operators.push(email);
+    else if(target==='admin')admins.push(email);
+    else if(target==='member')members.push(email);
+    await setDoc(configRef(),{operatorEmails:operators,adminEmails:admins,allowedEmails:members},{merge:true});
+    notify(target==='remove'?('削除しました: '+email):(roleLabel[target]+'に変更しました: '+email));
+  }catch(e){notify('失敗: '+e.message)}
+}
+
 $('addUserBtn').onclick=async()=>{
   if(!isOperator)return notify('運営ユーザーのみ実行できます');
   const email=$('newEmail').value.trim().toLowerCase();
   if(!email)return notify('メールアドレスを入力してください');
-  const asOp=$('newAsOp').checked;
+  const role=$('newRole').value;
   try{
     const data=await readConfig();
-    const operators=operatorListFrom(data);
-    const members=[...((data.allowedEmails)||[])];
-    if(operators.includes(email)||members.includes(email))return notify('既に追加されています');
-    if(asOp){operators.push(email);}else{members.push(email);}
-    await setDoc(configRef(),{operatorEmails:operators,allowedEmails:members},{merge:true});
-    $('newEmail').value='';$('newAsOp').checked=false;
-    notify((asOp?'運営ユーザーとして':'メンバーとして')+'追加しました: '+email);
+    const exists=operatorListFrom(data).includes(email)||adminListRaw(data).includes(email)||((data.allowedEmails)||[]).includes(email);
+    if(exists)return notify('既に追加されています（権限変更は一覧から）');
+    await setRole(email,role);
+    $('newEmail').value='';$('newRole').value='member';
   }catch(e){notify('追加失敗: '+e.message)}
 };
-async function promote(email){
-  if(!confirm(`${email} を運営ユーザーに昇格しますか？`))return;
-  try{
-    const data=await readConfig();
-    const operators=operatorListFrom(data);if(!operators.includes(email))operators.push(email);
-    const members=((data.allowedEmails)||[]).filter(e=>e!==email);
-    await setDoc(configRef(),{operatorEmails:operators,allowedEmails:members},{merge:true});
-    notify('運営ユーザーに昇格しました');
-  }catch(e){notify('失敗: '+e.message)}
-}
-async function demote(email){
-  if(!confirm(`${email} をメンバーに変更しますか？（運営権限・コンソール操作ができなくなります）`))return;
-  try{
-    const data=await readConfig();
-    const operators=operatorListFrom(data).filter(e=>e!==email);
-    const members=[...((data.allowedEmails)||[])];if(!members.includes(email))members.push(email);
-    await setDoc(configRef(),{operatorEmails:operators,allowedEmails:members},{merge:true});
-    notify('メンバーに変更しました');
-  }catch(e){notify('失敗: '+e.message)}
-}
-async function removeUser(email,asOp){
-  if(!confirm(`${email} を削除しますか？`))return;
-  try{
-    const data=await readConfig();
-    if(asOp){
-      await setDoc(configRef(),{operatorEmails:operatorListFrom(data).filter(e=>e!==email)},{merge:true});
-    }else{
-      await updateDoc(configRef(),{allowedEmails:((data.allowedEmails)||[]).filter(e=>e!==email)});
-    }
-    notify('削除しました');
-  }catch(e){notify('削除失敗: '+e.message)}
-}
 </script>
 </body>
 </html>
