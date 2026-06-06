@@ -878,7 +878,7 @@ body.titles-shown .vcard-overlay{opacity:1}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc, getDoc, getDocs, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc, getDoc, getDocs, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
@@ -891,7 +891,9 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// オフライン永続キャッシュ(IndexedDB)を有効化。リロード時はキャッシュから表示し、
+// サーバーへは差分のみ取得 → 全件読み直しによる読み取りコストを大幅削減（複数タブ対応）。
+const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
 // ===== 開発環境フラグ =====
 // true: 本番(workspaces等)とは別の dev_ コレクションを使用（本番データに影響しない）
 const DEV_MODE=true;
@@ -1545,11 +1547,7 @@ function enterWorkspace(id, name, code, color){
   startListeners();
   recordMembership();
   loadBasePath();
-  // Check if current user is workspace creator
-  getDoc(doc(db,C_WS,currentWsId)).then(snap=>{
-    const data=snap.data()||{};
-    isWsCreator=(data.createdBy===currentUser.uid);
-  }).catch(()=>{isWsCreator=false});
+  // 作成者判定は unsubWs スナップショット(applyWsDocData)が設定するため、ここでの個別getDocは廃止（読み取り削減）
   localFileHandles={};
   localLowHandles={};
   currentDirHandle=null;
