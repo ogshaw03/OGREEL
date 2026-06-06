@@ -2425,7 +2425,9 @@ function renderGrid(){
   const sort=document.getElementById('sortSelect').value;
   document.getElementById('countLabel').textContent=`${list.length}件`;
   // 表示内容が同一なら再描画をスキップ（他ユーザーの追加等で全タイルが再読込/チラつくのを防ぐ）
-  const _sig=autoplayEnabled+'|'+sort+'|'+(state.view||'')+'|'+JSON.stringify(list.map(v=>[v.id,v.url,v.title,v.fav?1:0,v.folder||'',(v.tags||[]).join(','),v.startTime||0,v.endTime||0,v.note||'']));
+  // フォルダのメタ情報(名前/色/追加削除)も署名に含め、フォルダ更新だけでもグリッドへ反映されるようにする
+  const _fsig=JSON.stringify(folders.map(f=>[f.id,f.name,f.color,f.parent||'']));
+  const _sig=autoplayEnabled+'|'+sort+'|'+(state.view||'')+'|'+_fsig+'|'+JSON.stringify(list.map(v=>[v.id,v.url,v.title,v.fav?1:0,v.folder||'',(v.tags||[]).join(','),v.startTime||0,v.endTime||0,v.note||'']));
   if(_sig===renderGrid._sig && g.children.length) return;
   renderGrid._sig=_sig;
   g.innerHTML='';
