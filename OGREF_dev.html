@@ -2117,11 +2117,16 @@ function getFolderItemsAtLevel(pathArr){
       item.color=anyDesc?anyDesc.color:'purple';
     }
   });
-  return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+  let arr=[...map.values()];
+  // ローカルフォルダ接続中は、配下に「存在する動画」が無いフォルダ(中身が削除された/空)を一覧から除外
+  if(currentDirHandle) arr=arr.filter(it=>countVideosUnder(it.full)>0);
+  return arr.sort((a,b)=>a.name.localeCompare(b.name,'ja'));
 }
 function countVideosUnder(fullPath){
   const set=new Set(getDescendantFolderIds(fullPath));
-  return videos.filter(v=>set.has(v.folder)).length;
+  // ローカルフォルダ接続中は、ファイルが存在する動画だけを数える（getFilteredVideosと同じ基準）
+  const filterByFolder=!!currentDirHandle;
+  return videos.filter(v=>set.has(v.folder) && (!filterByFolder||localFileExists(v))).length;
 }
 window.selectFolderFilter=function(fullPath){
   state.folderIds=getDescendantFolderIds(fullPath);
@@ -3293,15 +3298,8 @@ window.refreshLocalFolder=async function(silent){
   // Update snapshot
   localVideoSnapshot=newLocalVideos;
   localSnapshotWsId=currentWsId;
-  // ローカル接続中: リロード時にローカルフォルダの実体と突き合わせ、自分の表示を更新。
-  // 「動画が無いフォルダ」「中の動画が全てローカルかつファイルが存在しないフォルダ」を自分の画面から除外。
-  // ※共有データ(Firestore)は削除せず、自分の表示のみローカルフォルダの状態に合わせる。
-  if(currentDirHandle){
-    folders=folders.filter(f=>{
-      const fv=videos.filter(v=>v.folder===f.id);
-      return fv.some(v=>v.platform!=='local'||localFileExists(v));  // 1件でも実体のある動画があれば残す（無ければ除外）
-    });
-  }
+  // フォルダ表示の存在判定は countVideosUnder / getFolderItemsAtLevel(描画時)に一本化したため、
+  // ここでは folders 配列を改変せず再描画のみ行う（共有データは削除せず、自分の表示のみ実体に追従）。
   renderAll();
   if(silent)return;
   if(report.length){
