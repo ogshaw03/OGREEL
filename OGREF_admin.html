@@ -201,7 +201,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
@@ -331,6 +331,7 @@ function renderFbAdmin(items){
         <select class="fb-a-status" onchange="fbSetStatus('${it.id}',this.value)">${opts}</select>
         <input class="fb-a-comment" id="fbc-${it.id}" placeholder="運営コメント（任意・上書き）" value="${escH(it.comment||'')}">
         <button class="btn btn-primary btn-sm" onclick="fbSaveComment('${it.id}')">コメント保存</button>
+        <button class="btn btn-danger btn-sm" onclick="fbDelete('${it.id}')">削除</button>
       </div>
     </div>`;
   }).join('');
@@ -345,6 +346,12 @@ window.fbSaveComment=async function(id){
   const v=$('fbc-'+id).value.trim();
   try{ await updateDoc(doc(db,fbCol(),id),{comment:v,updatedAt:Date.now(),updatedBy:currentUser?currentUser.email:''}); notify('コメントを保存しました'); }
   catch(e){ notify('保存失敗: '+e.message); }
+};
+window.fbDelete=async function(id){
+  if(!isOperator)return notify('運営ユーザーのみ操作できます');
+  if(!confirm('この意見を削除します。元に戻せません。よろしいですか？'))return;
+  try{ await deleteDoc(doc(db,fbCol(),id)); notify('意見を削除しました'); }
+  catch(e){ notify('削除失敗: '+e.message); }
 };
 
 // ── Maintenance ──
