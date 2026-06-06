@@ -73,6 +73,13 @@ body{background:#05060a;color:var(--text);font-family:var(--font);display:flex;a
 .sb-item .sbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .content{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
 .content-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px;min-height:0}
+.botbar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:var(--bg2);border-top:1px solid var(--border)}
+.botadd{flex-shrink:0;width:44px;height:44px;border-radius:12px;background:var(--accent);color:#fff;border:none;font-size:24px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(124,111,255,.45)}
+.botscroll{flex:1;display:flex;gap:8px;overflow-x:auto;min-width:0}
+.botscroll::-webkit-scrollbar{display:none}
+.sb-chip{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;font-size:13px;padding:8px 12px;border-radius:999px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);white-space:nowrap}
+.sb-chip.on{background:var(--bg4);color:var(--text);border-color:var(--border2)}
+.sb-sep{flex-shrink:0;width:1px;height:24px;background:var(--border2);margin:0 2px}
 .fab{position:absolute;left:16px;bottom:calc(16px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:30px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(124,111,255,.55);z-index:35}
 .fab:active{filter:brightness(1.12)}
 /* sheets */
@@ -174,15 +181,13 @@ textarea.input{height:70px;resize:none}
       <button class="ic" id="titleToggle" onclick="toggleTitles()" title="タイトル表示の切替" style="font-size:14px;font-weight:700">Aa</button>
       <button class="ic" onclick="openSheet('sheet-menu')">⋮</button>
     </div>
-    <div class="lib-main">
-      <div class="sidebar">
-        <div class="sb-list" id="sideBar"></div>
-        <div class="sb-foot"><button class="addbar" onclick="go('scr-add')">＋ 追加</button></div>
-      </div>
-      <div class="content">
-        <div class="tagbar" id="tagBar"></div>
-        <div class="content-scroll"><div class="grid" id="libGrid"></div></div>
-      </div>
+    <div class="content">
+      <div class="tagbar" id="tagBar"></div>
+      <div class="content-scroll"><div class="grid" id="libGrid"></div></div>
+    </div>
+    <div class="botbar">
+      <button class="botadd" onclick="go('scr-add')" title="追加">＋</button>
+      <div class="botscroll" id="sideBar"></div>
     </div>
     <div class="tray" id="cmpTray"><span id="cmpCount">⊞ 0/2</span><button class="b" onclick="openCompare()">並べて再生</button><button class="c" onclick="clearCmp()">クリア</button></div>
   </div>
@@ -298,18 +303,18 @@ const FOLDERS=["作画参考","エフェクト","背景・美術","レイアウ�
 const TAGS=["歩き","走り","ループ","爆発","水しぶき","煙","表情","群衆","基礎","カメラ","タメ","モブ"];
 let stack=["scr-login"], curFilter="all", cmp=[], titlesOn=false;
 
-function sbItem(k,ic,l){return `<div class="sb-item ${curFilter===k?'on':''}" onclick="pickFilter('${k}',this)"><span class="sbi">${ic}</span><span class="sbl">${l}</span></div>`;}
+function sbItem(k,ic,l){return `<span class="sb-chip ${curFilter===k?'on':''}" onclick="pickFilter('${k}',this)"><span>${ic}</span><span>${l}</span></span>`;}
 function renderSidebar(){
-  let h='<div class="sb-label">ライブラリ</div>';
+  let h='';
   SIDE_LIB.forEach(a=>h+=sbItem(a[0],a[1],a[2]));
-  h+='<div class="sb-label">プラットフォーム</div>';
+  h+='<span class="sb-sep"></span>';
   SIDE_PLAT.forEach(a=>h+=sbItem(a[0],a[1],a[2]));
-  h+='<div class="sb-label">フォルダ</div>';
+  h+='<span class="sb-sep"></span>';
   FOLDERS.forEach(f=>h+=sbItem('f:'+f,'🗂',f));
   document.getElementById('sideBar').innerHTML=h;
 }
 function toggleTitles(){titlesOn=!titlesOn;const g=document.getElementById('libGrid');if(g)g.classList.toggle('titles-on',titlesOn);const b=document.getElementById('titleToggle');if(b)b.classList.toggle('on',titlesOn);}
-function pickFilter(k,el){curFilter=k;document.querySelectorAll('#sideBar .sb-item').forEach(x=>x.classList.remove('on'));el.classList.add('on');renderGrid();}
+function pickFilter(k,el){curFilter=k;document.querySelectorAll('#sideBar .sb-chip').forEach(x=>x.classList.remove('on'));el.classList.add('on');renderGrid();}
 function renderTagBar(){
   document.getElementById('tagBar').innerHTML='<span class="tag-lbl">タグ</span>'+TAGS.map(t=>`<span class="tagf" onclick="toggleTag(this)">${t}</span>`).join('');
 }
