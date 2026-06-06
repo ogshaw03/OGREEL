@@ -114,7 +114,8 @@ body.sb-collapsed .sidebar-toggle{left:66px}
 .nav-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--radius2);font-size:13px;color:var(--text2);cursor:pointer;transition:all .15s}
 .nav-item:hover{background:var(--bg4);color:var(--text)}
 .nav-item.active{background:var(--bg4);color:var(--text)}
-.nav-item .ni-icon{font-size:15px;width:18px;text-align:center}
+.nav-item .ni-icon{font-size:15px;width:18px;text-align:center;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.nav-item .ni-icon svg{width:16px;height:16px;display:block}
 .nav-item .badge{margin-left:auto;background:var(--bg4);border:1px solid var(--border);border-radius:10px;font-size:10px;padding:1px 6px;color:var(--text3)}
 .nav-item.active .badge{background:var(--accent);border-color:var(--accent);color:#fff}
 .folder-item{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--radius2);font-size:12px;color:var(--text2);cursor:pointer;transition:all .15s}
@@ -531,15 +532,15 @@ body.titles-shown .vcard-overlay{opacity:1}
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">プラットフォーム</div>
-      <div class="nav-item" onclick="setFilter('yt',this)"><span class="ni-icon">▶️</span>YouTube<span class="badge" id="badge-yt">0</span></div>
-      <div class="nav-item" onclick="setFilter('vm',this)"><span class="ni-icon">🎬</span>Vimeo<span class="badge" id="badge-vm">0</span></div>
-      <div class="nav-item" onclick="setFilter('nc',this)"><span class="ni-icon">🎴</span>ニコニコ<span class="badge" id="badge-nc">0</span></div>
-      <div class="nav-item" onclick="setFilter('x',this)"><span class="ni-icon">✖️</span>X (Twitter)<span class="badge" id="badge-x">0</span></div>
-      <div class="nav-item" onclick="setFilter('ig',this)"><span class="ni-icon">📷</span>Instagram<span class="badge" id="badge-ig">0</span></div>
-      <div class="nav-item" onclick="setFilter('gd',this)"><span class="ni-icon">📂</span>Google Drive<span class="badge" id="badge-gd">0</span></div>
-      <div class="nav-item" onclick="setFilter('li',this)"><span class="ni-icon">💼</span>LinkedIn<span class="badge" id="badge-li">0</span></div>
-      <div class="nav-item" onclick="setFilter('tt',this)"><span class="ni-icon">🎵</span>TikTok<span class="badge" id="badge-tt">0</span></div>
-      <div class="nav-item" onclick="setFilter('local',this)"><span class="ni-icon">💾</span>ローカル<span class="badge" id="badge-local">0</span></div>
+      <div class="nav-item" data-plat="yt" onclick="setFilter('yt',this)"><span class="ni-icon">▶️</span>YouTube<span class="badge" id="badge-yt">0</span></div>
+      <div class="nav-item" data-plat="vm" onclick="setFilter('vm',this)"><span class="ni-icon">🎬</span>Vimeo<span class="badge" id="badge-vm">0</span></div>
+      <div class="nav-item" data-plat="nc" onclick="setFilter('nc',this)"><span class="ni-icon">🎴</span>ニコニコ<span class="badge" id="badge-nc">0</span></div>
+      <div class="nav-item" data-plat="x" onclick="setFilter('x',this)"><span class="ni-icon">✖️</span>X (Twitter)<span class="badge" id="badge-x">0</span></div>
+      <div class="nav-item" data-plat="ig" onclick="setFilter('ig',this)"><span class="ni-icon">📷</span>Instagram<span class="badge" id="badge-ig">0</span></div>
+      <div class="nav-item" data-plat="gd" onclick="setFilter('gd',this)"><span class="ni-icon">📂</span>Google Drive<span class="badge" id="badge-gd">0</span></div>
+      <div class="nav-item" data-plat="li" onclick="setFilter('li',this)"><span class="ni-icon">💼</span>LinkedIn<span class="badge" id="badge-li">0</span></div>
+      <div class="nav-item" data-plat="tt" onclick="setFilter('tt',this)"><span class="ni-icon">🎵</span>TikTok<span class="badge" id="badge-tt">0</span></div>
+      <div class="nav-item" data-plat="local" onclick="setFilter('local',this)"><span class="ni-icon">💾</span>ローカル<span class="badge" id="badge-local">0</span></div>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">フォルダ</div>
@@ -2885,6 +2886,13 @@ function mdToHtml(md){
   closeList(); if(inCode)html+='</pre>';
   return html;
 }
+// PC版サイドバーのプラットフォーム項目にもブランド風アイコンを適用（PLAT_ICONを流用）
+function applyPlatformIcons(){
+  document.querySelectorAll('.nav-item[data-plat]').forEach(el=>{
+    const k=el.dataset.plat, ic=el.querySelector('.ni-icon');
+    if(ic&&PLAT_ICON[k])ic.innerHTML=PLAT_ICON[k];
+  });
+}
 window.openPatchNotes=async function(){
   const m=document.getElementById('patchModal');
   const body=document.getElementById('patchBody');
@@ -3773,6 +3781,7 @@ window.toggleTitles=function(){
 }
 applySidebarMode();
 applyTitlesMode();
+applyPlatformIcons();
 
 document.getElementById('searchInput').addEventListener('input',renderGrid);
 document.getElementById('sortSelect').addEventListener('change',()=>{
