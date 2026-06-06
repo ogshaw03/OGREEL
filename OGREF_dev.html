@@ -1451,7 +1451,7 @@ function renderWsList(list){
       <div class="ws-item-actions">
         ${ws.isOwner?`<button class="ws-item-delete" onclick="event.stopPropagation();renameWorkspace('${ws.id}','${ws.name.replace(/'/g,"\\'")}')` + `" title="リネーム">✏️</button>`:''}
         ${ws.isOwner?`<button class="ws-item-delete" onclick="event.stopPropagation();deleteWorkspace('${ws.id}','${ws.name.replace(/'/g,"\\'")}')` + `" title="完全削除（データも削除）">🗑️</button>`:''}
-        <button class="ws-item-del" onclick="event.stopPropagation();leaveWorkspace('${ws.id}')" title="リストから削除">✕</button>
+        ${!ws.isOwner?`<button class="ws-item-del" onclick="event.stopPropagation();leaveWorkspace('${ws.id}')" title="リストから削除">✕</button>`:''}
       </div>`;
     item.addEventListener('click',()=>enterWorkspace(ws.id, ws.name, ws.code, color));
     el.appendChild(item);
@@ -1533,6 +1533,8 @@ window.deleteWorkspace=async function(id, name){
     const list=await getUserWorkspaces();
     renderWsList(list);
     notify('ワークスペースを完全削除しました');
+    // 現在開いているワークスペースを削除した場合はWS選択画面へ戻す
+    if(currentWsId===id){ try{closeModal('membersModal');}catch(e){} showWsScreen(); }
   }catch(e){notify('削除失敗: '+e.message)}
 }
 
@@ -1641,10 +1643,9 @@ window.setAddPermission=async function(mode){
 // 参加者のワークスペース退出（リストからも削除）
 window.leaveWorkspace=async function(){
   if(!currentWsId||!currentUser)return;
-  const msg=isWsCreator
-    ? 'あなたはオーナーです。退出してもワークスペースと動画データは残り、他の参加者は引き続き利用できます。\n退出しますか？'
-    : 'このワークスペースを退出しますか？\n参加者リストから削除されます（再参加には招待コードが必要です）。';
-  if(!confirm(msg))return;
+  // オーナーは「退出(データ残置)」不可。Firestoreのデータ蓄積防止のため完全削除のみ可能。
+  if(isWsCreator){ deleteWorkspace(currentWsId, currentWsName); return; }
+  if(!confirm('このワークスペースを退出しますか？\n参加者リストから削除されます（再参加には招待コードが必要です）。'))return;
   const uid=currentUser.uid, wsId=currentWsId;
   try{
     await deleteDoc(doc(db,C_WS,wsId,'members',uid));
