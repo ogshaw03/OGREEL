@@ -44,7 +44,9 @@ body{background:#05060a;color:var(--text);font-family:var(--font);display:flex;a
 .thumb{aspect-ratio:16/9;position:relative;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:22px}
 .badge{position:absolute;top:6px;left:6px;font-size:9px;font-weight:700;padding:2px 6px;border-radius:5px;color:#fff}
 .dots{position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:7px;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;border:none}
-.ctitle{font-size:12.5px;line-height:1.35;padding:8px 9px 10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ctitle{font-size:12.5px;line-height:1.35;padding:8px 9px 10px;display:none;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.grid.titles-on .ctitle{display:-webkit-box}
+.ic.on{background:var(--accent);color:#fff}
 
 /* bottom nav */
 .bnav{height:64px;flex-shrink:0;display:flex;background:var(--bg2);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom)}
@@ -169,6 +171,7 @@ textarea.input{height:70px;resize:none}
       <button class="ws" onclick="openSheet('sheet-ws')"><span class="dot"></span><span id="wsName">制作チームA</span> ▾</button>
       <div class="sp"></div>
       <button class="ic" onclick="openSheet('sheet-search')">🔍</button>
+      <button class="ic" id="titleToggle" onclick="toggleTitles()" title="タイトル表示の切替" style="font-size:14px;font-weight:700">Aa</button>
       <button class="ic" onclick="openSheet('sheet-menu')">⋮</button>
     </div>
     <div class="lib-main">
@@ -293,7 +296,7 @@ const SIDE_LIB=[["all","🎞","すべて"],["fav","⭐","お気に入り"]];
 const SIDE_PLAT=[["yt","▶","YouTube"],["vm","🎬","Vimeo"],["nc","🎴","ニコニコ"],["x","✖","X"],["ig","📷","Instagram"],["tt","🎵","TikTok"],["li","💼","LinkedIn"],["gd","📂","Drive"],["local","💾","ローカル"]];
 const FOLDERS=["作画参考","エフェクト","背景・美術","レイアウト"];
 const TAGS=["歩き","走り","ループ","爆発","水しぶき","煙","表情","群衆","基礎","カメラ","タメ","モブ"];
-let stack=["scr-login"], curFilter="all", cmp=[];
+let stack=["scr-login"], curFilter="all", cmp=[], titlesOn=false;
 
 function sbItem(k,ic,l){return `<div class="sb-item ${curFilter===k?'on':''}" onclick="pickFilter('${k}',this)"><span class="sbi">${ic}</span><span class="sbl">${l}</span></div>`;}
 function renderSidebar(){
@@ -305,6 +308,7 @@ function renderSidebar(){
   FOLDERS.forEach(f=>h+=sbItem('f:'+f,'🗂',f));
   document.getElementById('sideBar').innerHTML=h;
 }
+function toggleTitles(){titlesOn=!titlesOn;const g=document.getElementById('libGrid');if(g)g.classList.toggle('titles-on',titlesOn);const b=document.getElementById('titleToggle');if(b)b.classList.toggle('on',titlesOn);}
 function pickFilter(k,el){curFilter=k;document.querySelectorAll('#sideBar .sb-item').forEach(x=>x.classList.remove('on'));el.classList.add('on');renderGrid();}
 function renderTagBar(){
   document.getElementById('tagBar').innerHTML='<span class="tag-lbl">タグ</span>'+TAGS.map(t=>`<span class="tagf" onclick="toggleTag(this)">${t}</span>`).join('');
