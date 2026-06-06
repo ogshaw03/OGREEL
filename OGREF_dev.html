@@ -347,8 +347,9 @@ body.titles-shown .vcard-overlay{opacity:1}
 
   /* --- ヘッダー → モバイル上部バー（#searchInput等を流用） --- */
   .header{gap:8px;padding:0 10px;height:52px}
-  .header .logo{display:none}
-  .header .home-btn{width:34px;height:34px;font-size:16px}
+  .header .logo{display:inline-flex}
+  .header .logo img{height:30px}
+  .header .home-btn{display:none}
   .search-wrap{max-width:none;flex:1}
   .search-wrap input{padding:8px 10px 8px 30px;font-size:14px}
   .header-actions{gap:4px;margin-left:auto}
@@ -575,6 +576,7 @@ body.titles-shown .vcard-overlay{opacity:1}
       </button>
     </div>
     <div id="mTopctrl">
+      <button class="m-tctrl-btn" onclick="showWsScreen()" title="ワークスペース選択へ戻る"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></button>
       <select id="mSortSelect" onchange="mobileSort(this.value)" title="並び替え">
         <option value="newest">新しい順</option>
         <option value="oldest">古い順</option>
