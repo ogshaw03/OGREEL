@@ -3087,7 +3087,10 @@ async function loadFolderHandle(dirHandle, showList){
   localFileHandles={};
   await scanDirInto(dirHandle,'',rootFiles,subfolders,localFileHandles);
   window._localScan={rootFiles,subfolders};
-  renderGrid();
+  // スキャン完了後はサイドバーのフォルダ一覧も再描画する（存在判定が確定するため）。
+  // renderGridだけだとフォルダ一覧が「localFileHandlesが空のまま描画された状態」で残り、
+  // ローカルフォルダ内に動画があってもフォルダが表示されないことがある。
+  renderAll();
   if(showList){
     const list=document.getElementById('localFileList');
     const total=rootFiles.length+Object.values(subfolders).reduce((a,b)=>a+b.length,0);
