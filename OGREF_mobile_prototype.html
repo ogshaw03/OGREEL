@@ -59,7 +59,11 @@ body{background:#05060a;color:var(--text);font-family:var(--font);display:flex;a
 .tagf{font-size:12px;padding:5px 11px;border-radius:999px;background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
 .tagf.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .lib-main{flex:1;display:flex;min-height:0}
-.sidebar{width:122px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;padding:6px 6px calc(84px + env(safe-area-inset-bottom))}
+.sidebar{width:122px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+.sb-list{flex:1;overflow-y:auto;padding:6px}
+.sb-foot{flex-shrink:0;padding:8px;border-top:1px solid var(--border);padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+.addbar{width:100%;height:46px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(124,111,255,.45)}
+.addbar:active{filter:brightness(1.1)}
 .sb-label{font-size:10px;color:var(--text3);letter-spacing:1px;padding:10px 6px 4px}
 .sb-item{display:flex;align-items:center;gap:7px;padding:9px 8px;border-radius:8px;font-size:12.5px;color:var(--text2)}
 .sb-item.on{background:var(--bg4);color:var(--text)}
@@ -168,10 +172,12 @@ textarea.input{height:70px;resize:none}
     </div>
     <div class="tagbar" id="tagBar"></div>
     <div class="lib-main">
-      <div class="sidebar" id="sideBar"></div>
+      <div class="sidebar">
+        <div class="sb-list" id="sideBar"></div>
+        <div class="sb-foot"><button class="addbar" onclick="go('scr-add')">＋ 追加</button></div>
+      </div>
       <div class="content"><div class="grid" id="libGrid"></div></div>
     </div>
-    <button class="fab" onclick="go('scr-add')" title="追加">＋</button>
     <div class="tray" id="cmpTray"><span id="cmpCount">⊞ 0/2</span><button class="b" onclick="openCompare()">並べて再生</button><button class="c" onclick="clearCmp()">クリア</button></div>
   </div>
 
