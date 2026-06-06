@@ -66,6 +66,8 @@ body{background:#05060a;color:var(--text);font-family:var(--font);display:flex;a
 .sb-item .sbi{font-size:14px;width:16px;text-align:center;flex-shrink:0}
 .sb-item .sbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .content{flex:1;min-width:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px}
+.fab{position:absolute;left:16px;bottom:calc(16px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:30px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(124,111,255,.55);z-index:35}
+.fab:active{filter:brightness(1.12)}
 /* sheets */
 #scrim{position:absolute;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .2s;z-index:40}
 #scrim.show{opacity:1;pointer-events:auto}
@@ -162,7 +164,6 @@ textarea.input{height:70px;resize:none}
       <button class="ws" onclick="openSheet('sheet-ws')"><span class="dot"></span><span id="wsName">制作チームA</span> ▾</button>
       <div class="sp"></div>
       <button class="ic" onclick="openSheet('sheet-search')">🔍</button>
-      <button class="ic" onclick="go('scr-add')">＋</button>
       <button class="ic" onclick="openSheet('sheet-menu')">⋮</button>
     </div>
     <div class="tagbar" id="tagBar"></div>
@@ -170,6 +171,7 @@ textarea.input{height:70px;resize:none}
       <div class="sidebar" id="sideBar"></div>
       <div class="content"><div class="grid" id="libGrid"></div></div>
     </div>
+    <button class="fab" onclick="go('scr-add')" title="追加">＋</button>
     <div class="tray" id="cmpTray"><span id="cmpCount">⊞ 0/2</span><button class="b" onclick="openCompare()">並べて再生</button><button class="c" onclick="clearCmp()">クリア</button></div>
   </div>
 
