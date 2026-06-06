@@ -1583,10 +1583,18 @@ function startListeners(){
     query(collection(db,C_WS,currentWsId,'videos'),orderBy('createdAt','desc')),
     snap=>{videos=snap.docs.map(d=>({id:d.id,...d.data()}));if(localSnapshotWsId!==currentWsId){localVideoSnapshot=videos.filter(v=>v.platform==='local');localSnapshotWsId=currentWsId;}renderAll();checkPendingVideo();autoSyncLocal();}
   );
-  unsubFolders=onSnapshot(
-    collection(db,C_WS,currentWsId,'folders'),
-    snap=>{folders=snap.docs.map(d=>({id:d.id,...d.data()}));renderAll();}
-  );
+  // フォルダはリアルタイム購読しない。入室/リロード時に一度だけ取得し、
+  // 自分の操作後のみ自分の画面を再取得する（他ユーザーの変更・リロードを即波及させない）
+  unsubFolders=null;
+  loadFolders();
+}
+async function loadFolders(){
+  if(!currentWsId)return;
+  try{
+    const snap=await getDocs(collection(db,C_WS,currentWsId,'folders'));
+    folders=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderAll();
+  }catch(e){}
 }
 
 // ── Share ──
@@ -2953,6 +2961,7 @@ window.saveFolder=async function(){
       await addDoc(collection(db,C_WS,currentWsId,'folders'),{name,color:state.selectedColor,createdAt:Date.now()});
       closeModal('folderModal');notify('フォルダを作成しました');
     }
+    await loadFolders();
   }catch(e){notify('保存失敗: '+e.message)}
 }
 
@@ -2969,6 +2978,7 @@ window.deleteFolder=async function(id,name){
     await deleteDoc(doc(db,C_WS,currentWsId,'folders',id));
     if(state.folder===id){state.folder=null;state.filter='all';}
     if(state.folderIds&&state.folderIds.includes(id)){state.folderIds=null;state.folderSel=null;state.filter='all';}
+    await loadFolders();
     notify('フォルダを削除しました');
   }catch(e){notify('削除失敗: '+e.message)}
 }
@@ -3122,6 +3132,7 @@ window.importLocalAll=async function(silent){
         });
       }
     }
+    await loadFolders();
     if(!silent){closeModal('localModal');notify('フォルダ構成ごと登録しました');}
   }catch(e){if(!silent)notify('登録失敗: '+e.message)}
 }
@@ -3258,6 +3269,8 @@ window.refreshLocalFolder=async function(silent){
     videos=_fs.docs.map(d=>({id:d.id,...d.data()}));
     _freshLocal=videos.filter(v=>v.platform==='local');
   }catch(e){ _freshLocal=videos.filter(v=>v.platform==='local'); }
+  // フォルダは購読していないため、自分の同期で増えた分を自分の画面に反映
+  try{ const _ff=await getDocs(collection(db,C_WS,currentWsId,'folders')); folders=_ff.docs.map(d=>({id:d.id,...d.data()})); }catch(e){}
   const newLocalVideos=[];{const _s=new Set();_freshLocal.forEach(v=>{if(!_s.has(v.url)){_s.add(v.url);newLocalVideos.push(v);}});}
   const oldUrls=new Set(oldSnapshot.map(v=>v.url));
   const newUrls=new Set(newLocalVideos.map(v=>v.url));
