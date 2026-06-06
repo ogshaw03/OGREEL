@@ -3293,7 +3293,16 @@ window.refreshLocalFolder=async function(silent){
   // Update snapshot
   localVideoSnapshot=newLocalVideos;
   localSnapshotWsId=currentWsId;
-  renderGrid();
+  // ローカル接続中: 実体が消えたフォルダ(動画が全てローカルかつファイルが存在しない)を自分の画面から除外。
+  // ※共有データ(Firestore)は削除せず、自分の表示のみローカルフォルダの状態に合わせる。
+  if(currentDirHandle){
+    folders=folders.filter(f=>{
+      const fv=videos.filter(v=>v.folder===f.id);
+      if(!fv.length)return true;                                   // 空フォルダ(手動作成等)は残す
+      return fv.some(v=>v.platform!=='local'||localFileExists(v));  // 1件でも実体があれば残す
+    });
+  }
+  renderAll();
   if(silent)return;
   if(report.length){
     showChangeReport(report);
