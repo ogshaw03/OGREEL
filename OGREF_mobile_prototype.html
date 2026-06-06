@@ -73,10 +73,11 @@ body{background:#05060a;color:var(--text);font-family:var(--font);display:flex;a
 .sb-item .sbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .content{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
 .content-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px;min-height:0}
-.botbar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:var(--bg2);border-top:1px solid var(--border)}
-.botadd{flex-shrink:0;width:44px;height:44px;border-radius:12px;background:var(--accent);color:#fff;border:none;font-size:24px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(124,111,255,.45)}
-.botscroll{flex:1;display:flex;gap:8px;overflow-x:auto;min-width:0}
-.botscroll::-webkit-scrollbar{display:none}
+.botbar{flex-shrink:0;display:flex;align-items:stretch;gap:8px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:var(--bg2);border-top:1px solid var(--border)}
+.botadd{flex-shrink:0;width:48px;align-self:stretch;border-radius:12px;background:var(--accent);color:#fff;border:none;font-size:26px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(124,111,255,.45)}
+.botrows{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.botrow{display:flex;gap:8px;overflow-x:auto;min-width:0}
+.botrow::-webkit-scrollbar{display:none}
 .sb-chip{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;font-size:13px;padding:8px 12px;border-radius:999px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);white-space:nowrap}
 .sb-chip.on{background:var(--bg4);color:var(--text);border-color:var(--border2)}
 .sb-sep{flex-shrink:0;width:1px;height:24px;background:var(--border2);margin:0 2px}
@@ -187,7 +188,10 @@ textarea.input{height:70px;resize:none}
     </div>
     <div class="botbar">
       <button class="botadd" onclick="go('scr-add')" title="追加">＋</button>
-      <div class="botscroll" id="sideBar"></div>
+      <div class="botrows">
+        <div class="botrow" id="sbPlat"></div>
+        <div class="botrow" id="sbFolder"></div>
+      </div>
     </div>
     <div class="tray" id="cmpTray"><span id="cmpCount">⊞ 0/2</span><button class="b" onclick="openCompare()">並べて再生</button><button class="c" onclick="clearCmp()">クリア</button></div>
   </div>
@@ -252,6 +256,7 @@ textarea.input{height:70px;resize:none}
 
   <div class="sheet" id="sheet-menu">
     <div class="handle"></div><h3>メニュー</h3>
+    <div class="srow" onclick="closeSheets();toast('ローカルフォルダ接続（プロト）')">💾 ローカルフォルダ<span class="r">›</span></div>
     <div class="srow" onclick="closeSheets();toast('参加者一覧')">👥 参加者一覧<span class="r">›</span></div>
     <div class="srow" onclick="closeSheets();toast('共有（招待コード）')">🔗 共有<span class="r">›</span></div>
     <div class="srow" onclick="closeSheets();toast('アクセス管理')">🔐 アクセス管理<span class="r">›</span></div>
@@ -305,16 +310,17 @@ let stack=["scr-login"], curFilter="all", cmp=[], titlesOn=false;
 
 function sbItem(k,ic,l){return `<span class="sb-chip ${curFilter===k?'on':''}" onclick="pickFilter('${k}',this)"><span>${ic}</span><span>${l}</span></span>`;}
 function renderSidebar(){
-  let h='';
-  SIDE_LIB.forEach(a=>h+=sbItem(a[0],a[1],a[2]));
-  h+='<span class="sb-sep"></span>';
-  SIDE_PLAT.forEach(a=>h+=sbItem(a[0],a[1],a[2]));
-  h+='<span class="sb-sep"></span>';
-  FOLDERS.forEach(f=>h+=sbItem('f:'+f,'🗂',f));
-  document.getElementById('sideBar').innerHTML=h;
+  let p='';
+  SIDE_LIB.forEach(a=>p+=sbItem(a[0],a[1],a[2]));
+  p+='<span class="sb-sep"></span>';
+  SIDE_PLAT.forEach(a=>p+=sbItem(a[0],a[1],a[2]));
+  document.getElementById('sbPlat').innerHTML=p;
+  let f='';
+  FOLDERS.forEach(x=>f+=sbItem('f:'+x,'🗂',x));
+  document.getElementById('sbFolder').innerHTML=f;
 }
 function toggleTitles(){titlesOn=!titlesOn;const g=document.getElementById('libGrid');if(g)g.classList.toggle('titles-on',titlesOn);const b=document.getElementById('titleToggle');if(b)b.classList.toggle('on',titlesOn);}
-function pickFilter(k,el){curFilter=k;document.querySelectorAll('#sideBar .sb-chip').forEach(x=>x.classList.remove('on'));el.classList.add('on');renderGrid();}
+function pickFilter(k,el){curFilter=k;document.querySelectorAll('.botbar .sb-chip').forEach(x=>x.classList.remove('on'));el.classList.add('on');renderGrid();}
 function renderTagBar(){
   document.getElementById('tagBar').innerHTML='<span class="tag-lbl">タグ</span>'+TAGS.map(t=>`<span class="tagf" onclick="toggleTag(this)">${t}</span>`).join('');
 }
