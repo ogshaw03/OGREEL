@@ -37,7 +37,7 @@ body{background:#05060a;color:var(--text);font-family:var(--font);display:flex;a
 .chips::-webkit-scrollbar{display:none}
 .chip{flex-shrink:0;font-size:13px;padding:8px 14px;border-radius:999px;background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
 .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:8px}
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .card:active{border-color:var(--accent)}
 .card.sel{outline:2px solid var(--accent);outline-offset:-2px}
@@ -53,6 +53,19 @@ body{background:#05060a;color:var(--text);font-family:var(--font);display:flex;a
 .bnav button .bi{font-size:21px}
 .bnav .addbtn .bi{width:48px;height:48px;margin-top:-16px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 6px 16px rgba(124,111,255,.5)}
 
+/* library layout: top tags + left sidebar + grid */
+.tagbar{flex-shrink:0;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;background:var(--bg);border-bottom:1px solid var(--border);max-height:94px;overflow-y:auto}
+.tagbar .tag-lbl{font-size:10px;color:var(--text3);letter-spacing:1px;margin-right:2px}
+.tagf{font-size:12px;padding:5px 11px;border-radius:999px;background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.tagf.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.lib-main{flex:1;display:flex;min-height:0}
+.sidebar{width:122px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;padding:6px 6px calc(8px + env(safe-area-inset-bottom))}
+.sb-label{font-size:10px;color:var(--text3);letter-spacing:1px;padding:10px 6px 4px}
+.sb-item{display:flex;align-items:center;gap:7px;padding:9px 8px;border-radius:8px;font-size:12.5px;color:var(--text2)}
+.sb-item.on{background:var(--bg4);color:var(--text)}
+.sb-item .sbi{font-size:14px;width:16px;text-align:center;flex-shrink:0}
+.sb-item .sbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.content{flex:1;min-width:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px}
 /* sheets */
 #scrim{position:absolute;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .2s;z-index:40}
 #scrim.show{opacity:1;pointer-events:auto}
@@ -106,7 +119,7 @@ textarea.input{height:70px;resize:none}
 .cmp .mute{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.55);color:#fff;border-radius:7px;padding:5px 10px;font-size:13px;border:none}
 
 /* compare tray */
-.tray{position:absolute;left:12px;right:12px;bottom:74px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:8px 12px;display:none;align-items:center;gap:10px;font-size:13px;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.tray{position:absolute;left:12px;right:12px;bottom:14px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:8px 12px;display:none;align-items:center;gap:10px;font-size:13px;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .tray.show{display:flex}
 .tray .b{margin-left:auto;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600}
 .tray .c{background:var(--bg3);color:var(--text2);border:none;border-radius:8px;padding:8px 12px;font-size:13px}
@@ -149,20 +162,15 @@ textarea.input{height:70px;resize:none}
       <button class="ws" onclick="openSheet('sheet-ws')"><span class="dot"></span><span id="wsName">制作チームA</span> ▾</button>
       <div class="sp"></div>
       <button class="ic" onclick="openSheet('sheet-search')">🔍</button>
+      <button class="ic" onclick="go('scr-add')">＋</button>
       <button class="ic" onclick="openSheet('sheet-menu')">⋮</button>
     </div>
-    <div class="body">
-      <div class="chips" id="libChips"></div>
-      <div class="grid" id="libGrid"></div>
+    <div class="tagbar" id="tagBar"></div>
+    <div class="lib-main">
+      <div class="sidebar" id="sideBar"></div>
+      <div class="content"><div class="grid" id="libGrid"></div></div>
     </div>
     <div class="tray" id="cmpTray"><span id="cmpCount">⊞ 0/2</span><button class="b" onclick="openCompare()">並べて再生</button><button class="c" onclick="clearCmp()">クリア</button></div>
-    <div class="bnav">
-      <button class="on" id="tab-all" onclick="setTab('all')"><span class="bi">🎞</span>一覧</button>
-      <button id="tab-fav" onclick="setTab('fav')"><span class="bi">⭐</span>お気に入り</button>
-      <button class="addbtn" onclick="go('scr-add')"><span class="bi">＋</span></button>
-      <button onclick="openSheet('sheet-filter')"><span class="bi">🗂</span>フィルタ</button>
-      <button onclick="openSheet('sheet-menu')"><span class="bi">👤</span>メニュー</button>
-    </div>
   </div>
 
   <!-- ADD -->
@@ -270,15 +278,29 @@ const VIDS=[
  {t:"群衆 モブ作画 参考",b:"YT",bc:"#ff5a5a",g:"linear-gradient(135deg,#1f2a3a,#101620)",ic:"▶",plat:"▶ YouTube"},
  {t:"煙_立ち上り_loop.mp4",b:"ローカル",bc:"#5a5a6a",g:"linear-gradient(135deg,#1f3a2a,#101a14)",ic:"🎬",plat:"💾 ローカル"},
 ];
-const CHIPS=["すべて","⭐","YouTube","ローカル","Vimeo","TikTok"];
-let stack=["scr-login"], tab="all", cmp=[];
+const SIDE_LIB=[["all","🎞","すべて"],["fav","⭐","お気に入り"]];
+const SIDE_PLAT=[["yt","▶","YouTube"],["vm","🎬","Vimeo"],["nc","🎴","ニコニコ"],["x","✖","X"],["ig","📷","Instagram"],["tt","🎵","TikTok"],["li","💼","LinkedIn"],["gd","📂","Drive"],["local","💾","ローカル"]];
+const FOLDERS=["作画参考","エフェクト","背景・美術","レイアウト"];
+const TAGS=["歩き","走り","ループ","爆発","水しぶき","煙","表情","群衆","基礎","カメラ","タメ","モブ"];
+let stack=["scr-login"], curFilter="all", cmp=[];
 
-function renderChips(){
-  document.getElementById('libChips').innerHTML=CHIPS.map((c,i)=>`<span class="chip ${i==0?'on':''}" onclick="chipTap(this)">${c}</span>`).join('');
+function sbItem(k,ic,l){return `<div class="sb-item ${curFilter===k?'on':''}" onclick="pickFilter('${k}',this)"><span class="sbi">${ic}</span><span class="sbl">${l}</span></div>`;}
+function renderSidebar(){
+  let h='<div class="sb-label">ライブラリ</div>';
+  SIDE_LIB.forEach(a=>h+=sbItem(a[0],a[1],a[2]));
+  h+='<div class="sb-label">プラットフォーム</div>';
+  SIDE_PLAT.forEach(a=>h+=sbItem(a[0],a[1],a[2]));
+  h+='<div class="sb-label">フォルダ</div>';
+  FOLDERS.forEach(f=>h+=sbItem('f:'+f,'🗂',f));
+  document.getElementById('sideBar').innerHTML=h;
 }
-function chipTap(el){document.querySelectorAll('#libChips .chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');}
+function pickFilter(k,el){curFilter=k;document.querySelectorAll('#sideBar .sb-item').forEach(x=>x.classList.remove('on'));el.classList.add('on');renderGrid();}
+function renderTagBar(){
+  document.getElementById('tagBar').innerHTML='<span class="tag-lbl">タグ</span>'+TAGS.map(t=>`<span class="tagf" onclick="toggleTag(this)">${t}</span>`).join('');
+}
+function toggleTag(el){el.classList.toggle('on');}
 function renderGrid(){
-  const list = tab=='fav' ? VIDS.slice(0,3) : VIDS;
+  const list = curFilter=='fav' ? VIDS.slice(0,3) : VIDS;
   document.getElementById('libGrid').innerHTML=list.map((v,i)=>`
     <div class="card ${cmp.includes(i)?'sel':''}" data-i="${i}" onclick="openPlayer(${i})">
       <div class="thumb" style="background:${v.g}">
@@ -294,7 +316,6 @@ function go(id){if(stack[stack.length-1]!==id)stack.push(id);render();}
 function back(){if(stack.length>1)stack.pop();render();}
 function enterWs(name){document.getElementById('wsName').textContent=name;stack=['scr-lib'];render();}
 function switchWs(name){document.getElementById('wsName').textContent=name;closeSheets();toast(name+' に切替');}
-function setTab(t){tab=t;document.getElementById('tab-all').classList.toggle('on',t=='all');document.getElementById('tab-fav').classList.toggle('on',t=='fav');renderGrid();}
 function openPlayer(i){const v=VIDS[i];document.getElementById('pTitle').textContent=v.t;document.getElementById('pPlat').textContent=v.plat;go('scr-player');}
 let actIdx=0;
 function actionFor(i){actIdx=i;document.getElementById('actTitle').textContent=VIDS[i].t;openSheet('sheet-action');}
@@ -309,7 +330,7 @@ function closeSheets(){document.getElementById('scrim').classList.remove('show')
 /* toast */
 let tt;function toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('show'),1400);}
 
-renderChips();renderGrid();render();
+renderSidebar();renderTagBar();renderGrid();render();
 </script>
 </body>
 </html>
