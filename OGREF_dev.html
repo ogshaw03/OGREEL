@@ -3293,13 +3293,13 @@ window.refreshLocalFolder=async function(silent){
   // Update snapshot
   localVideoSnapshot=newLocalVideos;
   localSnapshotWsId=currentWsId;
-  // ローカル接続中: 実体が消えたフォルダ(動画が全てローカルかつファイルが存在しない)を自分の画面から除外。
+  // ローカル接続中: リロード時にローカルフォルダの実体と突き合わせ、自分の表示を更新。
+  // 「動画が無いフォルダ」「中の動画が全てローカルかつファイルが存在しないフォルダ」を自分の画面から除外。
   // ※共有データ(Firestore)は削除せず、自分の表示のみローカルフォルダの状態に合わせる。
   if(currentDirHandle){
     folders=folders.filter(f=>{
       const fv=videos.filter(v=>v.folder===f.id);
-      if(!fv.length)return true;                                   // 空フォルダ(手動作成等)は残す
-      return fv.some(v=>v.platform!=='local'||localFileExists(v));  // 1件でも実体があれば残す
+      return fv.some(v=>v.platform!=='local'||localFileExists(v));  // 1件でも実体のある動画があれば残す（無ければ除外）
     });
   }
   renderAll();
