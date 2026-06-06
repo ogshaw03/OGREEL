@@ -69,7 +69,8 @@ body{background:#05060a;color:var(--text);font-family:var(--font);display:flex;a
 .sb-item.on{background:var(--bg4);color:var(--text)}
 .sb-item .sbi{font-size:14px;width:16px;text-align:center;flex-shrink:0}
 .sb-item .sbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.content{flex:1;min-width:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px}
+.content{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
+.content-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px;min-height:0}
 .fab{position:absolute;left:16px;bottom:calc(16px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:30px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(124,111,255,.55);z-index:35}
 .fab:active{filter:brightness(1.12)}
 /* sheets */
@@ -170,13 +171,15 @@ textarea.input{height:70px;resize:none}
       <button class="ic" onclick="openSheet('sheet-search')">🔍</button>
       <button class="ic" onclick="openSheet('sheet-menu')">⋮</button>
     </div>
-    <div class="tagbar" id="tagBar"></div>
     <div class="lib-main">
       <div class="sidebar">
         <div class="sb-list" id="sideBar"></div>
         <div class="sb-foot"><button class="addbar" onclick="go('scr-add')">＋ 追加</button></div>
       </div>
-      <div class="content"><div class="grid" id="libGrid"></div></div>
+      <div class="content">
+        <div class="tagbar" id="tagBar"></div>
+        <div class="content-scroll"><div class="grid" id="libGrid"></div></div>
+      </div>
     </div>
     <div class="tray" id="cmpTray"><span id="cmpCount">⊞ 0/2</span><button class="b" onclick="openCompare()">並べて再生</button><button class="c" onclick="clearCmp()">クリア</button></div>
   </div>
