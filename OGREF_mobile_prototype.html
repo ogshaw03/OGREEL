@@ -12,11 +12,11 @@
   --font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 body{background:#05060a;color:var(--text);font-family:var(--font);display:flex;align-items:center;justify-content:center}
 /* device frame (desktop); on small screens fill viewport */
 #device{position:relative;width:390px;height:800px;max-height:100vh;background:var(--bg);overflow:hidden;border-radius:34px;border:8px solid #20242f;box-shadow:0 20px 60px rgba(0,0,0,.6)}
-@media(max-width:460px){#device{width:100vw;height:100vh;border:0;border-radius:0}}
+@media(max-width:460px){#device{width:100vw;height:100vh;height:100dvh;border:0;border-radius:0}}
 .app{position:absolute;inset:0;display:flex;flex-direction:column}
 
 /* screen stack */
