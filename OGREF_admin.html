@@ -78,6 +78,21 @@
   .chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);white-space:nowrap;cursor:pointer}
 
   .notification{position:fixed;bottom:24px;right:24px;background:var(--bg4);border:1px solid var(--border2);border-radius:var(--radius);padding:11px 16px;font-size:13px;z-index:2000;display:none;max-width:340px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+
+  /* 意見一覧 */
+  .fb-counts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+  .fb-count{display:flex;align-items:center;gap:6px;font-size:12px;padding:5px 11px;border-radius:999px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2)}
+  .fb-count .n{font-weight:800;color:var(--text)}
+  .fb-count .swatch{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .fb-a-item{border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg3);padding:12px 14px;margin-bottom:10px}
+  .fb-a-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .fb-a-name{font-weight:700;font-size:13px}
+  .fb-a-meta{font-size:11px;color:var(--text3)}
+  .fb-a-pill{margin-left:auto;font-size:10px;padding:2px 9px;border-radius:10px;font-weight:700}
+  .fb-a-body{font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word;background:var(--bg);border-radius:var(--radius2);padding:9px 11px;margin-bottom:10px}
+  .fb-a-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .fb-a-status{width:auto;flex:0 0 auto;font-weight:700}
+  .fb-a-comment{flex:1;min-width:200px}
 </style>
 </head>
 <body>
@@ -170,6 +185,14 @@
           <button class="btn btn-primary" id="addUserBtn">追加</button>
         </div>
       </div>
+
+      <!-- Feedback (意見一覧) -->
+      <div class="card">
+        <div class="card-title">📋 意見一覧</div>
+        <div class="card-desc">利用者からの意見・要望です。各意見にステータスを設定し、運営コメント（任意・上書き）を残せます。コメントは意見箱の各意見の下に表示されます。</div>
+        <div class="fb-counts" id="fbCounts"></div>
+        <div id="fbAdminList"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -178,7 +201,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
@@ -197,14 +220,16 @@ const provider = new GoogleAuthProvider();
 let currentUser=null;
 let env='dev';
 let isOperator=false;
-let unsubConfig=null, unsubMaint=null, unsubBcast=null;
+let unsubConfig=null, unsubMaint=null, unsubBcast=null, unsubFb=null;
 
 const $=id=>document.getElementById(id);
+function escH(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function notify(msg){const n=$('notification');n.textContent=msg;n.style.display='block';clearTimeout(n._t);n._t=setTimeout(()=>n.style.display='none',3500);}
 function acCol(){return env==='prod'?'access_control':'dev_access_control';}
 function configRef(){return doc(db,acCol(),'config');}
 function maintRef(){return doc(db,acCol(),'maintenance');}
 function bcastRef(){return doc(db,acCol(),'broadcast');}
+function fbCol(){return env==='prod'?'feedback':'dev_feedback';}
 function fmtTime(ts){if(!ts)return'';const d=new Date(ts);return d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 // 運営ユーザー一覧。operatorEmails未設定なら旧adminEmailsを運営として移行扱い
 function operatorListFrom(data){
@@ -231,7 +256,7 @@ onAuthStateChanged(auth, async user=>{
   }
 });
 
-function cleanup(){ if(unsubConfig){unsubConfig();unsubConfig=null} if(unsubMaint){unsubMaint();unsubMaint=null} if(unsubBcast){unsubBcast();unsubBcast=null} }
+function cleanup(){ if(unsubConfig){unsubConfig();unsubConfig=null} if(unsubMaint){unsubMaint();unsubMaint=null} if(unsubBcast){unsubBcast();unsubBcast=null} if(unsubFb){unsubFb();unsubFb=null} }
 
 $('envSwitch').querySelectorAll('button').forEach(b=>{
   b.onclick=async()=>{
@@ -272,7 +297,55 @@ function subscribeAll(){
   unsubConfig=onSnapshot(configRef(), snap=>renderAccess(snap.exists()?snap.data():{}), err=>notify('アクセス監視エラー: '+err.message));
   unsubMaint=onSnapshot(maintRef(), snap=>renderMaintenance(snap.exists()?snap.data():{}), err=>{});
   unsubBcast=onSnapshot(bcastRef(), snap=>renderBroadcast(snap.exists()?snap.data():{}), err=>{});
+  unsubFb=onSnapshot(query(collection(db,fbCol()),orderBy('createdAt','desc')), snap=>renderFbAdmin(snap.docs.map(d=>({id:d.id,...d.data()}))), err=>{});
 }
+
+// ── 意見一覧（フィードバック） ──
+const FB_ST={
+  pending:{l:'未対応',bg:'#3a3a42',fg:'#cfcfda'},
+  review:{l:'要検討',bg:'#7c6fff',fg:'#ffffff'},
+  inprogress:{l:'対応中',bg:'#5affa0',fg:'#0b3a22'},
+  planned:{l:'対応予定',bg:'#5a8cff',fg:'#ffffff'},
+  wontfix:{l:'対応不可',bg:'#ff5a5a',fg:'#ffffff'},
+  unnecessary:{l:'対応不要',bg:'#ffd23f',fg:'#3a2e00'}
+};
+const FB_ORDER=['pending','review','inprogress','planned','wontfix','unnecessary'];
+function renderFbAdmin(items){
+  const counts={}; FB_ORDER.forEach(k=>counts[k]=0);
+  items.forEach(it=>{ const k=FB_ST[it.status]?it.status:'pending'; counts[k]++; });
+  $('fbCounts').innerHTML=FB_ORDER.map(k=>`<span class="fb-count"><span class="swatch" style="background:${FB_ST[k].bg}"></span>${FB_ST[k].l}<span class="n">${counts[k]}</span></span>`).join('');
+  const list=$('fbAdminList');
+  if(!items.length){ list.innerHTML='<div class="empty">まだ意見はありません</div>'; return; }
+  list.innerHTML=items.map(it=>{
+    const cur=FB_ST[it.status]?it.status:'pending';
+    const st=FB_ST[cur];
+    const opts=FB_ORDER.map(k=>`<option value="${k}"${k===cur?' selected':''}>${FB_ST[k].l}</option>`).join('');
+    return `<div class="fb-a-item">
+      <div class="fb-a-head">
+        <span class="fb-a-name">${escH(it.name||'（名無し）')}</span>
+        <span class="fb-a-meta">${escH(it.createdByEmail||'')}${it.createdAt?' ・ '+fmtTime(it.createdAt):''}</span>
+        <span class="fb-a-pill" style="background:${st.bg};color:${st.fg}">${st.l}</span>
+      </div>
+      <div class="fb-a-body">${escH(it.body||'')}</div>
+      <div class="fb-a-row">
+        <select class="fb-a-status" onchange="fbSetStatus('${it.id}',this.value)">${opts}</select>
+        <input class="fb-a-comment" id="fbc-${it.id}" placeholder="運営コメント（任意・上書き）" value="${escH(it.comment||'')}">
+        <button class="btn btn-primary btn-sm" onclick="fbSaveComment('${it.id}')">コメント保存</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+window.fbSetStatus=async function(id,status){
+  if(!isOperator)return notify('運営ユーザーのみ操作できます');
+  try{ await updateDoc(doc(db,fbCol(),id),{status,updatedAt:Date.now(),updatedBy:currentUser?currentUser.email:''}); notify('ステータスを更新しました'); }
+  catch(e){ notify('更新失敗: '+e.message); }
+};
+window.fbSaveComment=async function(id){
+  if(!isOperator)return notify('運営ユーザーのみ操作できます');
+  const v=$('fbc-'+id).value.trim();
+  try{ await updateDoc(doc(db,fbCol(),id),{comment:v,updatedAt:Date.now(),updatedBy:currentUser?currentUser.email:''}); notify('コメントを保存しました'); }
+  catch(e){ notify('保存失敗: '+e.message); }
+};
 
 // ── Maintenance ──
 function renderMaintenance(d){
