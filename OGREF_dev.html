@@ -355,6 +355,12 @@ body.titles-shown .vcard-overlay{opacity:1}
   .m-menu-handle{width:40px;height:4px;border-radius:2px;background:var(--border2);margin:10px auto 8px}
   .m-menu-item{display:flex;align-items:center;gap:12px;padding:14px 22px;font-size:15px;color:var(--text)}
   .m-menu-item:active{background:var(--bg3)}
+
+  /* ログイン / ワークスペース選択 / 拒否画面の表示中は下部バー等を隠す */
+  body:has(#loginScreen:not(.hidden), #wsScreen:not(.hidden), #deniedScreen:not(.hidden)) #mBotbar,
+  body:has(#loginScreen:not(.hidden), #wsScreen:not(.hidden), #deniedScreen:not(.hidden)) #mTagbar,
+  body:has(#loginScreen:not(.hidden), #wsScreen:not(.hidden), #deniedScreen:not(.hidden)) #mMenuBg,
+  body:has(#loginScreen:not(.hidden), #wsScreen:not(.hidden), #deniedScreen:not(.hidden)) #mMenuSheet{display:none!important}
 }
 </style>
 </head>
