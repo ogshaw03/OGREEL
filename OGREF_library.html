@@ -381,6 +381,17 @@ function tileMediaHtml(it){
   if(gd) return `<img src="https://drive.google.com/thumbnail?id=${gd}&sz=w640" loading="lazy">`;
   return `<div class="cell-ph">▶</div>`;
 }
+// タイトル自動取得（oEmbed: YouTube / Vimeo）
+async function fetchTitle(url){
+  try{
+    const yt=ytId(url), vm=vmId(url);
+    let api;
+    if(yt) api='https://www.youtube.com/oembed?format=json&url='+encodeURIComponent(url);
+    else if(vm) api='https://vimeo.com/api/oembed.json?url='+encodeURIComponent(url);
+    else return '';
+    const r=await fetch(api); if(!r.ok)return ''; const j=await r.json(); return j.title||'';
+  }catch(e){ return ''; }
+}
 // 詳細表示（右パネル / 中央モーダル）
 function detailMediaHtml(it){
   const u=it.url||'';
@@ -582,11 +593,13 @@ function openMediaModal(idx=-1){
   show('mediaModal'); setTimeout(()=>$('mediaUrl').focus(),50);
 }
 $('addMediaBtn').onclick=()=>openMediaModal(-1);
-$('mediaSaveBtn').onclick=()=>{
+$('mediaSaveBtn').onclick=async()=>{
   const url=$('mediaUrl').value.trim(); if(!url){notify('URLを入力してください');return;}
   let kind=$('mediaKind').value; if(kind==='auto')kind=guessKind(url);
+  let title=$('mediaTitle').value.trim();
+  if(!title && kind==='video'){ notify('タイトルを取得中...'); title=await fetchTitle(url); }
   const tags=$('mediaTags').value.split(/[,、\s]+/).map(s=>s.trim()).filter(Boolean);
-  const obj={ kind, url, title:$('mediaTitle').value.trim(), tags, startTime:parseTime($('mediaStart').value), endTime:parseTime($('mediaEnd').value), note:$('mediaNote').value.trim() };
+  const obj={ kind, url, title, tags, startTime:parseTime($('mediaStart').value), endTime:parseTime($('mediaEnd').value), note:$('mediaNote').value.trim() };
   curLib.items=curLib.items||[];
   if(mediaEditIdx>=0){ Object.assign(curLib.items[mediaEditIdx],obj); delete curLib.items[mediaEditIdx].cap; }
   else {
@@ -673,12 +686,14 @@ function setupDrag(cell,idx){
 
 // ===== 公開（観覧URL）=====
 $('publishBtn').onclick=async()=>{
-  if(!currentWsId)return;
-  const wsDoc=await getDoc(doc(db,C_WS,currentWsId)); const d=wsDoc.data()||{};
-  $('pubPassword').value=d.viewPassword||'';
-  if(d.viewToken){ $('pubUrlRow').classList.remove('hidden'); $('pubUrl').textContent=viewUrl(d.viewToken); }
-  else $('pubUrlRow').classList.add('hidden');
-  show('publishModal');
+  if(!currentWsId){notify('先にワークスペースに入ってください');return;}
+  show('publishModal');   // 読み込み前に必ず開く
+  $('pubUrlRow').classList.add('hidden'); $('pubPassword').value='';
+  try{
+    const wsDoc=await getDoc(doc(db,C_WS,currentWsId)); const d=wsDoc.data()||{};
+    $('pubPassword').value=d.viewPassword||'';
+    if(d.viewToken){ $('pubUrlRow').classList.remove('hidden'); $('pubUrl').textContent=viewUrl(d.viewToken); }
+  }catch(e){ notify('公開情報の読み込み失敗: '+e.message); }
 };
 function viewUrl(token){ return location.origin+location.pathname+'?view='+token; }
 window.copyPubUrl=()=>{ navigator.clipboard.writeText($('pubUrl').textContent).then(()=>notify('URLをコピーしました')).catch(()=>{}); };
