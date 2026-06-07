@@ -105,6 +105,35 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 .frow{margin-bottom:13px}.frow label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px}
 .frow input,.frow textarea,.frow select{width:100%}.frow textarea{height:90px;resize:vertical}
 .url-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:9px 11px;font-size:12px;word-break:break-all;color:var(--accent)}
+.btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* media tile extras */
+.cell-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.25);font-size:30px;background:#111}
+.cell-click{position:absolute;inset:0;z-index:2;cursor:pointer}
+.cell-title-ov{position:absolute;left:0;right:0;bottom:0;padding:16px 8px 7px;background:linear-gradient(transparent,rgba(0,0,0,.85));font-size:12px;color:#fff;opacity:0;transition:.15s;z-index:3;pointer-events:none;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.media-cell:hover .cell-title-ov{opacity:1}
+body.titles-shown .cell-title-ov{opacity:1}
+.cell-badge-range{position:absolute;top:5px;left:5px;z-index:3;background:rgba(0,0,0,.65);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;opacity:.85}
+
+/* right slide panel */
+.right-panel{width:0;flex-shrink:0;background:var(--bg2);border-left:1px solid var(--border);overflow:hidden;transition:width .2s ease;display:flex;flex-direction:column}
+.right-panel.open{width:420px}
+.rp-head{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.rp-player{position:relative;width:100%;aspect-ratio:16/9;background:#000;flex-shrink:0}
+.rp-player iframe,.rp-player img,.rp-player video{position:absolute;inset:0;width:100%;height:100%;border:none;object-fit:contain;background:#000}
+.rp-info{padding:14px;overflow-y:auto}
+.rp-title{font-weight:700;font-size:15px;margin-bottom:8px;word-break:break-word}
+.rp-meta{font-size:12px;color:var(--text3);margin-bottom:8px}
+.rp-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.rp-tag{background:var(--bg4);border:1px solid var(--border);border-radius:10px;padding:2px 8px;font-size:11px;color:var(--text2)}
+.rp-note{background:var(--bg3);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--text2);white-space:pre-wrap;word-break:break-word;margin-bottom:10px}
+.rp-actions{display:flex;gap:6px;flex-wrap:wrap}
+
+/* big center modal */
+#bigModal .modal{max-width:1040px;width:96vw;padding:0;background:#000;overflow:hidden}
+.big-player{position:relative;width:100%;aspect-ratio:16/9;background:#000}
+.big-player iframe,.big-player img,.big-player video{position:absolute;inset:0;width:100%;height:100%;border:none;object-fit:contain}
+.big-bar{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2)}
 
 /* viewer */
 .viewer .toolbar,.viewer .new-lib-btn,.viewer .cell-actions,.viewer .cell-handle,.viewer .sb-title .btn{display:none!important}
@@ -166,6 +195,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
   </div>
   <div class="viewer-head hidden" id="viewerHeader">
     <div class="viewer-title" id="viewerTitle">📚 ライブラリ</div>
+    <button class="btn btn-ghost btn-sm js-autoplay" onclick="toggleAutoplay()" style="margin-left:8px">▶ 自動再生</button>
+    <button class="btn btn-ghost btn-sm js-titles" onclick="toggleTitles()">🏷 タイトル</button>
     <div class="spacer"></div>
     <span class="muted" style="font-size:11px">観覧モード（編集不可）</span>
   </div>
@@ -184,6 +215,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
           <option value="16/9">16:9</option><option value="1/1">正方形</option><option value="4/3">4:3</option><option value="3/4">縦長</option>
         </select></div>
         <div class="grp">余白 <input type="range" id="gapSel" min="0" max="28" value="12" style="width:90px"></div>
+        <button class="btn btn-ghost btn-sm js-autoplay" onclick="toggleAutoplay()">▶ 自動再生</button>
+        <button class="btn btn-ghost btn-sm js-titles" onclick="toggleTitles()">🏷 タイトル</button>
         <button class="btn btn-ghost btn-sm" id="addMediaBtn">＋ メディア</button>
         <button class="btn btn-ghost btn-sm" id="addTextBtn">＋ テキスト</button>
         <button class="btn btn-ghost btn-sm" id="addSepBtn">＋ 区切り線</button>
@@ -193,6 +226,29 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
         <div class="lib-grid" id="libGrid"></div>
       </div>
     </div>
+    <div class="right-panel" id="rightPanel">
+      <div class="rp-head"><span style="font-size:12px;color:var(--text3)">詳細</span><button class="btn btn-ghost btn-sm" onclick="closeRightPanel()">✕</button></div>
+      <div class="rp-player" id="rpPlayer"></div>
+      <div class="rp-info">
+        <div class="rp-title" id="rpTitle"></div>
+        <div class="rp-meta" id="rpMeta"></div>
+        <div class="rp-tags" id="rpTags"></div>
+        <div class="rp-note" id="rpNote" style="display:none"></div>
+        <div class="rp-actions">
+          <button class="btn btn-primary btn-sm" onclick="expandToModal()">⛶ 拡大表示</button>
+          <button class="btn btn-ghost btn-sm" id="rpOpenUrl">↗ 元ページ</button>
+          <button class="btn btn-ghost btn-sm" id="rpEditBtn">✏️ 編集</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BIG CENTER MODAL -->
+<div class="modal-bg hidden" id="bigModal" onclick="if(event.target===this)closeBig()">
+  <div class="modal">
+    <div class="big-player" id="bigPlayer"></div>
+    <div class="big-bar"><span id="bigTitle" style="font-size:13px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><button class="btn btn-ghost btn-sm" onclick="closeBig()">✕ 閉じる</button></div>
   </div>
 </div>
 
@@ -208,11 +264,20 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 <!-- ADD MEDIA MODAL -->
 <div class="modal-bg hidden" id="mediaModal">
   <div class="modal">
-    <div class="modal-head"><div class="modal-title">メディアを追加</div><button class="btn-sm" onclick="closeModal('mediaModal')">✕</button></div>
+    <div class="modal-head"><div class="modal-title" id="mediaModalTitle">メディアを追加</div><button class="btn-sm" onclick="closeModal('mediaModal')">✕</button></div>
     <div class="modal-body">
       <div class="frow"><label>URL（YouTube / Vimeo / Google Drive / 画像URL 等）</label><input id="mediaUrl" placeholder="https://..."></div>
       <div class="frow"><label>種別</label><select id="mediaKind"><option value="auto">自動判定</option><option value="video">動画</option><option value="image">画像</option></select></div>
-      <div class="frow"><label>キャプション（任意）</label><input id="mediaCap" placeholder="タイトル・説明（任意）"></div>
+      <div class="frow"><label>タイトル（任意）</label><input id="mediaTitle" placeholder="タイトル"></div>
+      <div class="frow"><label>タグ（カンマ区切り・任意）</label><input id="mediaTags" placeholder="例: アクション, 走り"></div>
+      <div class="frow"><label>再生範囲（任意・秒 または 1:30 形式 / 動画のみ）</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="mediaStart" placeholder="開始 0:00" style="flex:1">
+          <span style="color:var(--text3)">〜</span>
+          <input id="mediaEnd" placeholder="終了（任意）" style="flex:1">
+        </div>
+      </div>
+      <div class="frow"><label>メモ（任意）</label><textarea id="mediaNote" placeholder="自由にメモ..."></textarea></div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('mediaModal')">キャンセル</button><button class="btn btn-primary" id="mediaSaveBtn">追加</button></div>
   </div>
@@ -290,17 +355,39 @@ window.closeModal=id=>hide(id);
 async function sha256(s){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 
 // ===== メディア判定 / 埋め込み =====
+let autoplayEnabled=true, titlesShown=false, detailIdx=-1;
 function ytId(u){ const m=u.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/); return m?m[1]:null; }
 function vmId(u){ const m=u.match(/vimeo\.com\/(?:video\/)?(\d+)/); return m?m[1]:null; }
 function gdId(u){ const m=u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?id=)([\w-]+)/); return m?m[1]:(u.match(/[?&]id=([\w-]+)/)||[])[1]||null; }
 function guessKind(u){ return /\.(png|jpe?g|gif|webp|svg|bmp|avif)(\?|$)/i.test(u) ? 'image' : 'video'; }
-function mediaEmbedHtml(it){
+function ytThumb(id){ return `https://img.youtube.com/vi/${id}/hqdefault.jpg`; }
+function parseTime(s){ s=String(s||'').trim(); if(!s)return 0; if(/^\d+$/.test(s))return parseInt(s,10); const p=s.split(':').map(n=>parseInt(n,10)||0); if(p.length===2)return p[0]*60+p[1]; if(p.length===3)return p[0]*3600+p[1]*60+p[2]; return 0; }
+function secsToTime(t){ t=Math.floor(t||0); return Math.floor(t/60)+':'+String(t%60).padStart(2,'0'); }
+function mediaTitle(it){ return it.title||it.cap||''; }
+function ytRange(it){ let s=''; if(it.startTime)s+='&start='+Math.floor(it.startTime); if(it.endTime)s+='&end='+Math.floor(it.endTime); return s; }
+function vmHash(it){ return it.startTime?('#t='+Math.floor(it.startTime)+'s'):''; }
+// タイル表示（自動再生ON=ミュート再生 / OFF=サムネ）
+function tileMediaHtml(it){
   const u=it.url||'';
-  if(it.kind==='image'){ return `<img src="${esc(u)}" alt="" loading="lazy">`; }
-  const yt=ytId(u); if(yt) return `<iframe src="https://www.youtube.com/embed/${yt}" allow="autoplay;encrypted-media" allowfullscreen></iframe>`;
-  const vm=vmId(u); if(vm) return `<iframe src="https://player.vimeo.com/video/${vm}" allow="autoplay;fullscreen" allowfullscreen></iframe>`;
+  if(it.kind==='image') return `<img src="${esc(u)}" loading="lazy">`;
+  const yt=ytId(u), vm=vmId(u), gd=gdId(u);
+  if(autoplayEnabled){
+    if(yt) return `<iframe src="https://www.youtube.com/embed/${yt}?autoplay=1&mute=1&loop=1&playlist=${yt}&controls=0&modestbranding=1${ytRange(it)}" allow="autoplay" frameborder="0"></iframe>`;
+    if(vm) return `<iframe src="https://player.vimeo.com/video/${vm}?autoplay=1&muted=1&loop=1&background=1${vmHash(it)}" allow="autoplay"></iframe>`;
+    if(gd) return `<iframe src="https://drive.google.com/file/d/${gd}/preview" allow="autoplay"></iframe>`;
+    return `<iframe src="${esc(u)}"></iframe>`;
+  }
+  if(yt) return `<img src="${ytThumb(yt)}" loading="lazy">`;
+  if(gd) return `<img src="https://drive.google.com/thumbnail?id=${gd}&sz=w640" loading="lazy">`;
+  return `<div class="cell-ph">▶</div>`;
+}
+// 詳細表示（右パネル / 中央モーダル）
+function detailMediaHtml(it){
+  const u=it.url||'';
+  if(it.kind==='image') return `<img src="${esc(u)}">`;
+  const yt=ytId(u); if(yt) return `<iframe src="https://www.youtube.com/embed/${yt}?autoplay=1&loop=1&playlist=${yt}${ytRange(it)}" allow="autoplay;fullscreen" allowfullscreen></iframe>`;
+  const vm=vmId(u); if(vm) return `<iframe src="https://player.vimeo.com/video/${vm}?autoplay=1&loop=1${vmHash(it)}" allow="autoplay;fullscreen" allowfullscreen></iframe>`;
   const gd=gdId(u); if(gd) return `<iframe src="https://drive.google.com/file/d/${gd}/preview" allow="autoplay" allowfullscreen></iframe>`;
-  // それ以外は汎用iframe（再生できない場合あり）
   return `<iframe src="${esc(u)}" allowfullscreen></iframe>`;
 }
 
@@ -318,7 +405,7 @@ onAuthStateChanged(auth, user=>{
 });
 $('loginBtn').onclick=()=>signInWithPopup(auth,provider).catch(e=>notify('ログイン失敗: '+e.message));
 $('logoutBtn').onclick=()=>signOut(auth);
-$('backWsBtn').onclick=()=>{ if(unsubLibs){unsubLibs();unsubLibs=null;} hide('app'); openWsScreen(); };
+$('backWsBtn').onclick=()=>{ closeRightPanel(); if(unsubLibs){unsubLibs();unsubLibs=null;} hide('app'); openWsScreen(); };
 
 // ===== ワークスペース =====
 async function openWsScreen(){
@@ -359,7 +446,7 @@ async function deleteWs(wsId){
 
 function enterWs(id,name){
   currentWsId=id; currentWsName=name; curLib=null;
-  hide('wsScreen'); show('app');
+  hide('wsScreen'); show('app'); closeRightPanel(); syncToggles();
   $('wsNameLabel').textContent='/ '+name;
   if(unsubLibs)unsubLibs();
   unsubLibs=onSnapshot(query(collection(db,C_WS,currentWsId,'libraries')), snap=>{
@@ -415,7 +502,7 @@ $('libSaveBtn').onclick=async()=>{
 };
 $('libNameInput').addEventListener('keydown',e=>{ if(e.key==='Enter')$('libSaveBtn').click(); });
 async function deleteLib(l){ if(!confirm(`「${l.name}」を削除しますか？`))return; try{await deleteDoc(doc(db,C_WS,currentWsId,'libraries',l.id)); if(curLib&&curLib.id===l.id)curLib=null;}catch(e){notify('失敗');} }
-function selectLib(id){ curLib=libraries.find(l=>l.id===id)||null; renderLibList(); renderEditor(); }
+function selectLib(id){ closeRightPanel(); curLib=libraries.find(l=>l.id===id)||null; renderLibList(); renderEditor(); }
 
 // ===== エディタ =====
 function renderEditor(){
@@ -446,12 +533,18 @@ function makeCell(it,idx){
     c.className='cell row';
     c.innerHTML=`<div class="row-bar"><span class="cell-handle">⠿</span><span class="cell-actions"><button class="cell-act" data-a="del">🗑️</button></span></div><hr class="cell-sep">`;
   } else {
-    c.className='cell';
-    c.innerHTML=`<div class="cell-handle">⠿</div><div class="cell-actions"><button class="cell-act" data-a="del">🗑️</button></div><div class="cell-media">${mediaEmbedHtml(it)}</div>${it.cap?`<div class="cell-cap">${esc(it.cap)}</div>`:''}`;
+    c.className='cell media-cell';
+    const t=mediaTitle(it);
+    const rangeBadge=(it.startTime||it.endTime)?`<span class="cell-badge-range">⏱ ${secsToTime(it.startTime)}${it.endTime?('-'+secsToTime(it.endTime)):''}</span>`:'';
+    c.innerHTML=`<div class="cell-media">${tileMediaHtml(it)}<div class="cell-click" data-a="open"></div>${rangeBadge}${t?`<div class="cell-title-ov">${esc(t)}</div>`:''}</div>
+      <div class="cell-handle">⠿</div>
+      <div class="cell-actions"><button class="cell-act" data-a="medit">✏️</button><button class="cell-act" data-a="del">🗑️</button></div>`;
   }
+  const op=c.querySelector('[data-a=open]'); if(op)op.onclick=(e)=>{e.stopPropagation();openDetail(idx);};
   if(!viewerMode){
-    c.querySelectorAll('[data-a=del]').forEach(b=>b.onclick=()=>removeItem(idx));
-    const ed=c.querySelector('[data-a=edit]'); if(ed)ed.onclick=()=>editText(idx);
+    c.querySelectorAll('[data-a=del]').forEach(b=>b.onclick=(e)=>{e.stopPropagation();removeItem(idx);});
+    const ed=c.querySelector('[data-a=edit]'); if(ed)ed.onclick=(e)=>{e.stopPropagation();editText(idx);};
+    const me=c.querySelector('[data-a=medit]'); if(me)me.onclick=(e)=>{e.stopPropagation();openMediaModal(idx);};
     setupDrag(c,idx);
   }
   return c;
@@ -469,18 +562,68 @@ async function saveItems(){
   if(!curLib)return;
   try{await updateDoc(doc(db,C_WS,currentWsId,'libraries',curLib.id),{items:curLib.items,updatedAt:Date.now()});}catch(e){notify('保存失敗: '+e.message);}
 }
-function removeItem(idx){ curLib.items.splice(idx,1); renderEditor(); saveItems(); }
+function removeItem(idx){ closeRightPanel(); curLib.items.splice(idx,1); renderEditor(); saveItems(); }
 
-// 追加: メディア
-$('addMediaBtn').onclick=()=>{ if(!curLib){notify('先にライブラリを選択/作成してください');return;} $('mediaUrl').value='';$('mediaCap').value='';$('mediaKind').value='auto'; show('mediaModal'); $('mediaUrl').focus(); };
+// 追加/編集: メディア
+let mediaEditIdx=-1;
+function openMediaModal(idx=-1){
+  if(!curLib){notify('先にライブラリを選択/作成してください');return;}
+  mediaEditIdx=idx;
+  const it=idx>=0?curLib.items[idx]:null;
+  $('mediaModalTitle').textContent=idx>=0?'メディアを編集':'メディアを追加';
+  $('mediaSaveBtn').textContent=idx>=0?'保存':'追加';
+  $('mediaUrl').value=it?(it.url||''):'';
+  $('mediaKind').value=it?(it.kind||'auto'):'auto';
+  $('mediaTitle').value=it?mediaTitle(it):'';
+  $('mediaTags').value=(it&&it.tags)?it.tags.join(', '):'';
+  $('mediaStart').value=(it&&it.startTime)?secsToTime(it.startTime):'';
+  $('mediaEnd').value=(it&&it.endTime)?secsToTime(it.endTime):'';
+  $('mediaNote').value=it?(it.note||''):'';
+  show('mediaModal'); setTimeout(()=>$('mediaUrl').focus(),50);
+}
+$('addMediaBtn').onclick=()=>openMediaModal(-1);
 $('mediaSaveBtn').onclick=()=>{
   const url=$('mediaUrl').value.trim(); if(!url){notify('URLを入力してください');return;}
-  const media=(curLib.items||[]).filter(x=>x.type==='media').length;
-  if(media>=ITEM_LIMIT){notify(`メディアは1ライブラリ${ITEM_LIMIT}個までです`);return;}
   let kind=$('mediaKind').value; if(kind==='auto')kind=guessKind(url);
-  curLib.items=curLib.items||[]; curLib.items.push({id:uid(),type:'media',kind,url,cap:$('mediaCap').value.trim()});
+  const tags=$('mediaTags').value.split(/[,、\s]+/).map(s=>s.trim()).filter(Boolean);
+  const obj={ kind, url, title:$('mediaTitle').value.trim(), tags, startTime:parseTime($('mediaStart').value), endTime:parseTime($('mediaEnd').value), note:$('mediaNote').value.trim() };
+  curLib.items=curLib.items||[];
+  if(mediaEditIdx>=0){ Object.assign(curLib.items[mediaEditIdx],obj); delete curLib.items[mediaEditIdx].cap; }
+  else {
+    const media=curLib.items.filter(x=>x.type==='media').length;
+    if(media>=ITEM_LIMIT){notify(`メディアは1ライブラリ${ITEM_LIMIT}個までです`);return;}
+    curLib.items.push({id:uid(),type:'media',...obj});
+  }
   closeModal('mediaModal'); renderEditor(); saveItems();
 };
+// ===== 自動再生 / タイトル表示トグル・詳細表示（右パネル/モーダル）=====
+function syncToggles(){
+  document.querySelectorAll('.js-autoplay').forEach(b=>b.classList.toggle('on',autoplayEnabled));
+  document.querySelectorAll('.js-titles').forEach(b=>b.classList.toggle('on',titlesShown));
+}
+function renderGridNow(){ if(viewerMode)renderViewerGrid(); else renderEditor(); }
+window.toggleAutoplay=()=>{ autoplayEnabled=!autoplayEnabled; syncToggles(); renderGridNow(); };
+window.toggleTitles=()=>{ titlesShown=!titlesShown; document.body.classList.toggle('titles-shown',titlesShown); syncToggles(); };
+function openDetail(idx){
+  const it=(curLib&&curLib.items)?curLib.items[idx]:null; if(!it||it.type!=='media')return;
+  detailIdx=idx;
+  $('rpPlayer').innerHTML=detailMediaHtml(it);
+  $('rpTitle').textContent=mediaTitle(it)||'(無題)';
+  const rng=(it.startTime||it.endTime)?('⏱ '+secsToTime(it.startTime)+(it.endTime?('〜'+secsToTime(it.endTime)):'')):'';
+  $('rpMeta').textContent=[(it.kind==='image'?'画像':'動画'),rng].filter(Boolean).join(' ・ ');
+  $('rpTags').innerHTML=(it.tags||[]).map(t=>`<span class="rp-tag">${esc(t)}</span>`).join('');
+  const nt=$('rpNote'); if(it.note){nt.style.display='';nt.textContent=it.note;}else nt.style.display='none';
+  $('rpOpenUrl').onclick=()=>window.open(it.url,'_blank');
+  $('rpEditBtn').style.display=viewerMode?'none':'';
+  $('rpEditBtn').onclick=()=>{ closeRightPanel(); openMediaModal(idx); };
+  $('rightPanel').classList.add('open');
+}
+window.closeRightPanel=()=>{ $('rpPlayer').innerHTML=''; $('rightPanel').classList.remove('open'); detailIdx=-1; };
+window.expandToModal=()=>{
+  const it=(curLib&&curLib.items)?curLib.items[detailIdx]:null; if(!it)return;
+  $('bigPlayer').innerHTML=detailMediaHtml(it); $('bigTitle').textContent=mediaTitle(it)||''; show('bigModal');
+};
+window.closeBig=()=>{ $('bigPlayer').innerHTML=''; hide('bigModal'); };
 // 追加: テキスト
 let textEditIdx=-1;
 $('addTextBtn').onclick=()=>{ if(!curLib){notify('先にライブラリを選択してください');return;} textEditIdx=-1; $('textModalTitle').textContent='テキストを追加'; $('textInput').value=''; show('textModal'); $('textInput').focus(); };
@@ -584,7 +727,7 @@ async function initViewer(token){
   $('pwInput').addEventListener('keydown',e=>{ if(e.key==='Enter')$('pwBtn').click(); });
 }
 function openViewer(){
-  show('app');
+  show('app'); syncToggles();
   hide('editorHeader'); show('viewerHeader');
   $('viewerTitle').textContent='📚 '+(viewData.wsName||'ライブラリ');
   libraries=(viewData.libraries||[]);
@@ -595,7 +738,7 @@ function openViewer(){
   libraries.forEach(l=>{
     const it=document.createElement('div'); it.className='lib-item'+(curLib&&curLib.id===l.id?' active':'');
     it.innerHTML=`<span class="lib-item-name">${esc(l.name)}</span>`;
-    it.onclick=()=>{ curLib=l; document.querySelectorAll('#libList .lib-item').forEach(x=>x.classList.remove('active')); it.classList.add('active'); renderViewerGrid(); };
+    it.onclick=()=>{ closeRightPanel(); curLib=l; document.querySelectorAll('#libList .lib-item').forEach(x=>x.classList.remove('active')); it.classList.add('active'); renderViewerGrid(); };
     el.appendChild(it);
   });
   renderViewerGrid();
