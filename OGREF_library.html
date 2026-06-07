@@ -344,6 +344,7 @@ const ITEM_LIMIT = 200;
 let currentUser=null, currentWsId=null, currentWsName=null;
 let libraries=[], curLib=null, unsubLibs=null;
 let viewerMode=false, viewData=null;
+let curViewToken='';
 
 const $=id=>document.getElementById(id);
 function show(id){ $(id).classList.remove('hidden'); }
@@ -352,7 +353,7 @@ function notify(m){ const n=$('notif'); n.textContent=m; n.style.display='block'
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 window.closeModal=id=>hide(id);
-const APP_BUILD='build-0607e';   // 最新版を読めているか確認用（ヘッダーに表示）
+const APP_BUILD='build-0607f';   // 最新版を読めているか確認用（ヘッダーに表示）
 try{ const _vl=$('verLabel'); if(_vl)_vl.textContent=APP_BUILD; }catch(e){}
 async function sha256(s){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 
@@ -693,26 +694,26 @@ window.openPublish=async function(){
   $('pubUrlRow').classList.add('hidden'); $('pubPassword').value='';
   try{
     const wsDoc=await getDoc(doc(db,C_WS,currentWsId)); const d=wsDoc.data()||{};
+    curViewToken=d.viewToken||'';
     $('pubPassword').value=d.viewPassword||'';
     if(d.viewToken){ $('pubUrlRow').classList.remove('hidden'); $('pubUrl').textContent=viewUrl(d.viewToken); }
   }catch(e){ notify('公開情報の読み込み失敗: '+e.message); }
 };
 function viewUrl(token){ return location.origin+location.pathname+'?view='+token; }
 window.copyPubUrl=()=>{ navigator.clipboard.writeText($('pubUrl').textContent).then(()=>notify('URLをコピーしました')).catch(()=>{}); };
+const withTO=(p,ms,tag)=>Promise.race([Promise.resolve(p), new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout:'+(tag||''))),ms))]);
 window.doPublish=async function(){
   const pw=($('pubPassword').value||'').trim(); if(!pw){notify('パスワードを設定してください');return;}
   notify('公開処理中...');   // クリックが届いたことを即時表示
   try{
-    const wsRef=doc(db,C_WS,currentWsId);
-    let token; try{ token=(await getDoc(wsRef)).data()?.viewToken; }catch(_){}
-    if(!token) token=uid()+uid();
+    let token=curViewToken; if(!token) token=uid()+uid();
     const pwHash=await sha256(pw);
-    const libsSnap=await getDocs(query(collection(db,C_WS,currentWsId,'libraries')));
-    const libs=libsSnap.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>(a.order||0)-(b.order||0))
+    // ライブラリはメモリ(onSnapshotで取得済み)を使用。getDocsのサーバー取得でハングしないように。
+    const libs=(libraries||[]).slice().sort((a,b)=>(a.order||0)-(b.order||0))
       .map(l=>({id:l.id,name:l.name||'',cols:l.cols||3,aspect:l.aspect||'16/9',gap:l.gap!=null?l.gap:12,items:l.items||[]}));
-    await setDoc(doc(db,C_PUB,token),{wsId:currentWsId,wsName:currentWsName||'',pwHash,libraries:libs,updatedAt:Date.now()});
-    await updateDoc(wsRef,{viewToken:token,viewPassword:pw});
-    // 先にURLを出す（楽観的）
+    await withTO(setDoc(doc(db,C_PUB,token),{wsId:currentWsId,wsName:currentWsName||'',pwHash,libraries:libs,updatedAt:Date.now()}),9000,'setDoc');
+    await withTO(updateDoc(doc(db,C_WS,currentWsId),{viewToken:token,viewPassword:pw}),9000,'updateDoc');
+    curViewToken=token;
     $('pubUrlRow').classList.remove('hidden'); $('pubUrl').textContent=viewUrl(token);
     // サーバー保存をタイムアウト付きで検証（ハングさせない）
     let res;
@@ -724,7 +725,7 @@ window.doPublish=async function(){
     }catch(e){ res='error:'+(e&&e.message||e); }
     if(res==='ok') notify('公開しました（内容を反映）');
     else if(res==='timeout') notify('公開しました（サーバー確認はタイムアウト。観覧URLをお試しください）');
-    else notify('公開失敗の可能性：サーバー保存を確認できません（'+res+'）。Firestoreルール lib_dev_public をご確認ください。');
+    else notify('公開保存を確認できません（'+res+'）。Firestoreルール lib_dev_public をご確認ください。');
   }catch(e){ notify('公開失敗: '+(e&&e.message||e)); }
 };
 $('unpublishBtn').onclick=async()=>{
