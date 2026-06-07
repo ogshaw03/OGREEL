@@ -19,8 +19,39 @@
 ## OGREF 本体 / 共通基盤
 - [ ] Firestore のデータ蓄積（孤児データのGC・クリーンアップ）
 - [ ] サーバー負荷 / Firebaseコスト（ページネーション、非アクティブlistener停止 など）
-- [ ] 会社用アプリ（マルチテナント対応）
 - [ ] Beta への反映（dev で蓄積した変更）※ユーザーが明示するまで実施しない
+
+## 会社用アプリ（マルチテナント＋サブスク）
+**目的**: サブスク販売。小規模プラン=5人 / 大規模プラン=30人。会社が購入し、プランごとに使えるユーザー数を制限。
+
+### 方針（検討結果）
+- **テナント分離は「プール型（単一プロジェクト・単一DB）＋ orgId パススコープ」を採用**。
+  - 完全分離（会社ごとにプロジェクト/named DB）は多数の中小テナントには非現実的（スケール/運用/コスト/横断操作の観点）。法的データ所在地や特定大企業の契約要件が出たら、その顧客だけハイブリッドで分離検討。
+  - **コレクション名プレフィックス（例 `acme_workspaces`）はテナント分離に不適**。`dev_`/`lib_` は「アプリ/環境分離」用であり別物。テナントは **パス階層** `organizations/{orgId}/…` で分ける。
+  - 分離強制は **Security Rules ＋ Auth Custom Claims（トークンに orgId/role/plan）**。`request.auth.token.orgId == orgId` で他社データを完全遮断＝SaaS標準の分離レベル。
+
+### データモデル案
+```
+organizations/{orgId} = { name, plan:'small'|'large', seatLimit:5|30,
+                          seatUsed, status:'active'|'suspended', ownerUid, createdAt }
+organizations/{orgId}/members/{uid} = { email, role:'admin'|'member', addedAt }  // 1件=1席
+organizations/{orgId}/workspaces/{wsId}/...   // WSを組織配下に
+users/{uid} = { orgId, role }                 // 所属組織の逆引き
+```
+
+### 席数制限は3層で強制（クライアントのみは改ざん可なので不可）
+1. クライアント: 追加時に `seatUsed < seatLimit` を確認（UX）。
+2. Firestoreルール: `seatUsed` カウンタ＋トランザクションで上限超過の create を拒否。`status=='active'` も条件。
+3. Cloud Functions: 課金(Stripe等)Webhookで `plan/seatLimit/status` を更新。席超過・課金整合の最終防衛。
+
+### 注意点
+- **ドメイン許可（@company.com 全員）と席数制限は相性が悪い**（人数青天井）。席で売るなら個別招待制を基本に。
+- サブスク＝**Cloud Functions（サーバー）追加が前提**。現状は純クライアント構成のため、ここが最大の追加要素。
+- 現状は単一テナント（`access_control/config` が1つ）。マルチテナント化＝これを org 単位に分割し `checkAccess` を組織解決＋席数チェックへ改修。
+
+### 進め方（段階導入）
+- フェーズ1: `organizations`/`members` 導入、`checkAccess` 改修、組織作成・プラン設定は運営が手動登録、課金は手動請求。→ これだけで「5人/30人制限」は機能（ルール強制込み）。
+- フェーズ2: Stripe Billing 接続（購入→組織自動発行→プラン/席数/解約の自動反映）＋ Custom Claims 導入で完全自動化。
 
 ## セキュリティ（要検討）
 - [ ] 観覧ミラー（`lib_*_public`）は認証なしで読めるため `pwHash` がブラウザから見え得る。高機密用途には非推奨。本格対応は Cloud Functions 等でのサーバー側検証が必要。
