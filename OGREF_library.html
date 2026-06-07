@@ -418,7 +418,7 @@ function notify(m){ const n=$('notif'); n.textContent=m; n.style.display='block'
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 window.closeModal=id=>hide(id);
-const APP_BUILD='build-0607j';   // 最新版を読めているか確認用（ヘッダーに表示）
+const APP_BUILD='build-0607k';   // 最新版を読めているか確認用（ヘッダーに表示）
 try{ const _vl=$('verLabel'); if(_vl)_vl.textContent=APP_BUILD; }catch(e){}
 
 // ===== テーマカラー（ライブラリごと・アクセント＋背景） =====
@@ -429,7 +429,12 @@ const THEMES={
   coral:{label:'コーラル', v:{'--bg':'#120c0d','--bg2':'#191112','--bg3':'#221719','--bg4':'#2c1e20','--border':'#352426','--border2':'#4a3335','--text':'#f2e8e9','--text2':'#b59a9c','--text3':'#6e5658','--accent':'#ff6b6b','--accent2':'#e84d4d'}},
   amber:{label:'アンバー', v:{'--bg':'#100e0a','--bg2':'#171410','--bg3':'#201b14','--bg4':'#2a231a','--border':'#332b20','--border2':'#473c2c','--text':'#f1ece2','--text2':'#b5a890','--text3':'#6e6450','--accent':'#ffb454','--accent2':'#f59e2e'}},
   mono:{label:'モノクロ', v:{'--bg':'#0d0d0f','--bg2':'#141416','--bg3':'#1c1c1f','--bg4':'#232327','--border':'#2a2a2f','--border2':'#3a3a42','--text':'#eaeaee','--text2':'#9a9aa2','--text3':'#5a5a62','--accent':'#aab0c0','--accent2':'#8b91a3'}},
-  light:{label:'ライト', v:{'--bg':'#f4f4f7','--bg2':'#ffffff','--bg3':'#ececef','--bg4':'#e2e2e8','--border':'#d8d8de','--border2':'#c2c2cc','--text':'#1a1a1f','--text2':'#5a5a6a','--text3':'#9a9aaa','--accent':'#7c6fff','--accent2':'#5a4fff'}}
+  light:{label:'ライト', v:{'--bg':'#f4f4f7','--bg2':'#ffffff','--bg3':'#ececef','--bg4':'#e2e2e8','--border':'#d8d8de','--border2':'#c2c2cc','--text':'#1a1a1f','--text2':'#5a5a6a','--text3':'#9a9aaa','--accent':'#7c6fff','--accent2':'#5a4fff'}},
+  sakura:{label:'さくら', v:{'--bg':'#fff0f4','--bg2':'#ffffff','--bg3':'#ffe3ec','--bg4':'#ffd6e3','--border':'#ffc9da','--border2':'#ff9bbd','--text':'#5a2738','--text2':'#a85f7a','--text3':'#d199b0','--accent':'#ff7eb0','--accent2':'#ff5a9e'}},
+  mint:{label:'ミント', v:{'--bg':'#eefaf4','--bg2':'#ffffff','--bg3':'#ddf3e9','--bg4':'#ccecdd','--border':'#bce4d2','--border2':'#8fd3b6','--text':'#1f4a3a','--text2':'#4f7e6c','--text3':'#93c2ae','--accent':'#34d399','--accent2':'#14b87f'}},
+  lavender:{label:'ラベンダー', v:{'--bg':'#f3f0ff','--bg2':'#ffffff','--bg3':'#e9e3ff','--bg4':'#ddd4ff','--border':'#cfc4f5','--border2':'#b3a3ef','--text':'#382a5a','--text2':'#6f5fa0','--text3':'#a99cd1','--accent':'#a78bfa','--accent2':'#8b6cf0'}},
+  peach:{label:'ピーチ', v:{'--bg':'#fff4ec','--bg2':'#ffffff','--bg3':'#ffe7d6','--bg4':'#ffdcc4','--border':'#ffceb0','--border2':'#ffab7d','--text':'#5a3622','--text2':'#a8714f','--text3':'#d1a888','--accent':'#ff9a62','--accent2':'#ff7e3a'}},
+  dreamy:{label:'ゆめかわ', v:{'--bg':'#fdf0fb','--bg2':'#ffffff','--bg3':'#f7e1f5','--bg4':'#f0d3ef','--border':'#ecc6ea','--border2':'#e0a3de','--text':'#4f2a5a','--text2':'#9a5fa0','--text3':'#cf9cd1','--accent':'#f49ad1','--accent2':'#ec7ac4'}}
 };
 function applyTheme(key){
   const t=THEMES[key]||THEMES.purple;
