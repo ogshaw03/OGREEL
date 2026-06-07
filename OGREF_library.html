@@ -396,10 +396,10 @@ async function fetchTitle(url){
 function detailMediaHtml(it){
   const u=it.url||'';
   if(it.kind==='image') return `<img src="${esc(u)}">`;
-  const yt=ytId(u); if(yt) return `<iframe src="https://www.youtube.com/embed/${yt}?autoplay=1&loop=1&playlist=${yt}${ytRange(it)}" allow="autoplay;fullscreen" allowfullscreen></iframe>`;
-  const vm=vmId(u); if(vm) return `<iframe src="https://player.vimeo.com/video/${vm}?autoplay=1&loop=1${vmHash(it)}" allow="autoplay;fullscreen" allowfullscreen></iframe>`;
-  const gd=gdId(u); if(gd) return `<iframe src="https://drive.google.com/file/d/${gd}/preview" allow="autoplay" allowfullscreen></iframe>`;
-  return `<iframe src="${esc(u)}" allowfullscreen></iframe>`;
+  const yt=ytId(u); if(yt) return `<iframe src="https://www.youtube.com/embed/${yt}?autoplay=1&loop=1&playlist=${yt}${ytRange(it)}" allow="autoplay; fullscreen; encrypted-media"></iframe>`;
+  const vm=vmId(u); if(vm) return `<iframe src="https://player.vimeo.com/video/${vm}?autoplay=1&loop=1${vmHash(it)}" allow="autoplay; fullscreen"></iframe>`;
+  const gd=gdId(u); if(gd) return `<iframe src="https://drive.google.com/file/d/${gd}/preview" allow="autoplay; fullscreen"></iframe>`;
+  return `<iframe src="${esc(u)}" allow="fullscreen"></iframe>`;
 }
 
 // ===== 認証 / 画面遷移 =====
