@@ -190,7 +190,7 @@ body.titles-shown .cell-title-ov{opacity:1}
     <div class="logo">OGREF <span class="sub">Library</span><span class="ver" id="verLabel">dev</span></div>
     <span class="muted" id="wsNameLabel" style="font-size:13px"></span>
     <div class="spacer"></div>
-    <button class="btn btn-ghost btn-sm" id="publishBtn">🔗 公開設定</button>
+    <button class="btn btn-ghost btn-sm" id="publishBtn" onclick="openPublish()">🔗 公開設定</button>
     <img class="avatar" id="avatar" src="">
   </div>
   <div class="viewer-head hidden" id="viewerHeader">
@@ -352,7 +352,7 @@ function notify(m){ const n=$('notif'); n.textContent=m; n.style.display='block'
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 window.closeModal=id=>hide(id);
-const APP_BUILD='build-0607c';   // 最新版を読めているか確認用（ヘッダーに表示）
+const APP_BUILD='build-0607d';   // 最新版を読めているか確認用（ヘッダーに表示）
 try{ const _vl=$('verLabel'); if(_vl)_vl.textContent=APP_BUILD; }catch(e){}
 async function sha256(s){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 
@@ -687,7 +687,7 @@ function setupDrag(cell,idx){
 }
 
 // ===== 公開（観覧URL）=====
-$('publishBtn').onclick=async()=>{
+window.openPublish=async function(){
   if(!currentWsId){notify('先にワークスペースに入ってください');return;}
   show('publishModal');   // 読み込み前に必ず開く
   $('pubUrlRow').classList.add('hidden'); $('pubPassword').value='';
