@@ -25,6 +25,21 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 .btn-sm{padding:4px 9px;font-size:12px}
 .hidden{display:none!important}
 
+/* theme picker */
+.theme-swatch{width:14px;height:14px;border-radius:4px;border:1px solid var(--border2);background:var(--accent);display:inline-block;flex-shrink:0}
+.theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.theme-card{border:2px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;background:var(--bg3);transition:.15s}
+.theme-card:hover{border-color:var(--border2)}
+.theme-card.sel{border-color:var(--accent)}
+.theme-prev{height:84px;padding:10px;display:flex;flex-direction:column;gap:7px}
+.tp-bar{height:8px;border-radius:3px;width:60%}
+.tp-panel{flex:1;border-radius:6px;padding:8px;display:flex;flex-direction:column;gap:5px;justify-content:center}
+.tp-row{display:flex;align-items:center;gap:6px}
+.tp-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.tp-line{height:5px;border-radius:3px;flex:1}
+.theme-cap{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;font-size:12px;font-weight:600;color:var(--text)}
+.theme-cap .chk{color:var(--accent);font-weight:700}
+
 /* overlays */
 .overlay{position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;overflow-y:auto}
 .brand{font-size:30px;font-weight:800;letter-spacing:1px}.brand .sub{color:var(--accent)}
@@ -224,15 +239,7 @@ body.titles-shown .cell-title-ov{opacity:1}
           <option value="16/9">16:9</option><option value="1/1">正方形</option><option value="4/3">4:3</option><option value="3/4">縦長</option>
         </select></div>
         <div class="grp">余白 <input type="range" id="gapSel" min="0" max="28" value="12" style="width:90px"></div>
-        <div class="grp">色 <select id="themeSel">
-          <option value="purple">パープル</option>
-          <option value="blue">ブルー</option>
-          <option value="green">グリーン</option>
-          <option value="coral">コーラル</option>
-          <option value="amber">アンバー</option>
-          <option value="mono">モノクロ</option>
-          <option value="light">ライト</option>
-        </select></div>
+        <button class="btn btn-ghost btn-sm" id="themeBtn" onclick="openThemeModal()" title="テーマカラーを選択"><span class="theme-swatch" id="themeSwatch"></span><span id="themeBtnLabel">テーマ</span></button>
         <button class="btn btn-ghost btn-sm js-autoplay" onclick="toggleAutoplay()" title="自動再生の切り替え" style="gap:5px"><span class="ap-icon">▶</span><span class="ap-label">自動再生 ON</span></button>
         <button class="btn btn-ghost btn-sm js-titles" onclick="toggleTitles()" title="タイル上のタイトル表示/非表示" style="gap:5px"><span>🏷️</span><span class="tt-label">タイトルOFF</span></button>
         <button class="btn btn-ghost btn-sm" id="addMediaBtn">＋ メディア</button>
@@ -356,6 +363,18 @@ body.titles-shown .cell-title-ov{opacity:1}
   </div>
 </div>
 
+<!-- THEME PICKER MODAL -->
+<div class="modal-bg hidden" id="themeModal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-head"><div class="modal-title">🎨 テーマカラー</div><button class="btn-sm" onclick="closeModal('themeModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="muted" style="font-size:11px;margin-bottom:12px;text-align:left">このライブラリのテーマを選択します（観覧URLにも反映されます）。</div>
+      <div class="theme-grid" id="themeGrid"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('themeModal')">閉じる</button></div>
+  </div>
+</div>
+
 <div class="notif" id="notif"></div>
 
 <script type="module">
@@ -399,7 +418,7 @@ function notify(m){ const n=$('notif'); n.textContent=m; n.style.display='block'
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 window.closeModal=id=>hide(id);
-const APP_BUILD='build-0607i';   // 最新版を読めているか確認用（ヘッダーに表示）
+const APP_BUILD='build-0607j';   // 最新版を読めているか確認用（ヘッダーに表示）
 try{ const _vl=$('verLabel'); if(_vl)_vl.textContent=APP_BUILD; }catch(e){}
 
 // ===== テーマカラー（ライブラリごと・アクセント＋背景） =====
@@ -679,12 +698,12 @@ function selectLib(id){ closeRightPanel(); curLib=libraries.find(l=>l.id===id)||
 // ===== エディタ =====
 function renderEditor(){
   const grid=$('libGrid');
-  if(!curLib){ $('curLibName').textContent='—'; $('itemCount').textContent='0/'+ITEM_LIMIT; applyTheme('purple'); grid.innerHTML='<div class="empty">左の「＋ 新しいライブラリ」から作成してください</div>'; return; }
+  if(!curLib){ $('curLibName').textContent='—'; $('itemCount').textContent='0/'+ITEM_LIMIT; applyTheme('purple'); updateThemeBtn('purple'); grid.innerHTML='<div class="empty">左の「＋ 新しいライブラリ」から作成してください</div>'; return; }
   $('curLibName').textContent=curLib.name;
   $('colsSel').value=String(curLib.cols||3);
   $('aspectSel').value=curLib.aspect||'16/9';
   $('gapSel').value=String(curLib.gap!=null?curLib.gap:12);
-  $('themeSel').value=curLib.theme||'purple';
+  updateThemeBtn(curLib.theme);
   applyTheme(curLib.theme);
   applyGridStyle(grid);
   const items=curLib.items||[];
@@ -728,7 +747,44 @@ $('colsSel').onchange=()=>saveLibMeta({cols:parseInt($('colsSel').value)});
 $('aspectSel').onchange=()=>saveLibMeta({aspect:$('aspectSel').value});
 $('gapSel').oninput=()=>{ if(curLib){curLib.gap=parseInt($('gapSel').value); applyGridStyle($('libGrid'));} };
 $('gapSel').onchange=()=>saveLibMeta({gap:parseInt($('gapSel').value)});
-$('themeSel').onchange=()=>{ applyTheme($('themeSel').value); saveLibMeta({theme:$('themeSel').value}); };
+// テーマ選択（プレビューパネル）
+function themeKey(k){ return THEMES[k]?k:'purple'; }
+function updateThemeBtn(k){
+  k=themeKey(k); const t=THEMES[k];
+  const sw=$('themeSwatch'); if(sw){ sw.style.background=t.v['--accent']; sw.style.borderColor=t.v['--border2']; }
+  const lb=$('themeBtnLabel'); if(lb)lb.textContent=t.label;
+}
+function themeCardHtml(k){
+  const t=THEMES[k], v=t.v, sel=(curLib&&themeKey(curLib.theme)===k)?' sel':'';
+  return `<div class="theme-card${sel}" data-key="${k}">
+    <div class="theme-prev" style="background:${v['--bg']}">
+      <div class="tp-bar" style="background:${v['--accent']}"></div>
+      <div class="tp-panel" style="background:${v['--bg2']};border:1px solid ${v['--border']}">
+        <div class="tp-row"><span class="tp-dot" style="background:${v['--accent']}"></span><span class="tp-line" style="background:${v['--border2']}"></span></div>
+        <div class="tp-line" style="background:${v['--border']};width:70%"></div>
+      </div>
+    </div>
+    <div class="theme-cap" style="background:${v['--bg2']}"><span style="color:${v['--text']}">${t.label}</span>${sel?'<span class="chk" style="color:'+v['--accent']+'">✓</span>':''}</div>
+  </div>`;
+}
+window.openThemeModal=function(){
+  if(!curLib){ notify('ライブラリを選択してください'); return; }
+  const g=$('themeGrid');
+  g.innerHTML=Object.keys(THEMES).map(themeCardHtml).join('');
+  g.querySelectorAll('.theme-card').forEach(c=>c.onclick=()=>selectTheme(c.dataset.key));
+  show('themeModal');
+};
+function selectTheme(k){
+  k=themeKey(k);
+  applyTheme(k); updateThemeBtn(k); saveLibMeta({theme:k});
+  const g=$('themeGrid');
+  g.querySelectorAll('.theme-card').forEach(c=>{
+    const on=c.dataset.key===k; c.classList.toggle('sel',on);
+    const cap=c.querySelector('.theme-cap'); const ex=cap.querySelector('.chk');
+    if(on&&!ex){ const s=document.createElement('span'); s.className='chk'; s.style.color=THEMES[k].v['--accent']; s.textContent='✓'; cap.appendChild(s); }
+    else if(!on&&ex){ ex.remove(); }
+  });
+}
 async function saveLibMeta(patch){
   if(!curLib)return; Object.assign(curLib,patch); applyGridStyle($('libGrid'));
   try{await updateDoc(doc(db,C_WS,currentWsId,'libraries',curLib.id),{...patch,updatedAt:Date.now()});}catch(e){notify('保存失敗');}
