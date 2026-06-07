@@ -174,11 +174,12 @@ body.sb-collapsed .sidebar-toggle{left:66px}
 .right-panel-note{background:var(--bg3);border-radius:var(--radius2);padding:8px 10px;font-size:12px;color:var(--text2);margin-bottom:8px}
 .right-panel-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
 .right-panel-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.video-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+.video-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(var(--card-min,280px),1fr))}
 .video-grid.list-view{grid-template-columns:1fr}
 
 /* CARDS */
 .vcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;position:relative}
+.size-btn.active{color:var(--green);border-color:var(--green)}
 .vcard:hover{border-color:var(--border2);transform:translateY(-5px);box-shadow:0 14px 32px rgba(0,0,0,.45)}
 .vcard-thumb-wrap{position:relative;padding-bottom:56.25%;background:#111;overflow:hidden;z-index:1}
 .vcard-thumb-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity .4s ease;z-index:1}
@@ -599,6 +600,12 @@ body.no-perm .m-menu-item.gated{display:none!important}
       <button class="btn btn-ghost" id="titleToggle" onclick="toggleTitles()" title="タイル上のタイトル表示/非表示（非表示でもホバーで表示）" style="font-size:12px;gap:5px">
         <span>🏷️</span><span id="titleToggleLabel">タイトルOFF</span>
       </button>
+      <div class="pc-only" title="タイルの大きさ（大きいほど画面内の枚数が減り軽くなります）" style="display:inline-flex;gap:4px;align-items:center;font-size:12px;color:var(--text2)">
+        <span style="margin:0 2px">サイズ</span>
+        <button class="btn btn-ghost size-btn" data-size="small" onclick="setGridSize('small')" style="font-size:12px;padding:4px 9px">小</button>
+        <button class="btn btn-ghost size-btn" data-size="medium" onclick="setGridSize('medium')" style="font-size:12px;padding:4px 9px">中</button>
+        <button class="btn btn-ghost size-btn" data-size="large" onclick="setGridSize('large')" style="font-size:12px;padding:4px 9px">大</button>
+      </div>
     </div>
     <div id="mTopctrl">
       <button class="m-tctrl-btn" onclick="showWsScreen()" title="ワークスペース選択へ戻る"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></button>
@@ -941,6 +948,14 @@ const ICON_HOME='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="current
 
 let videos=[], folders=[];
 let autoplayEnabled=localStorage.getItem('ogref_dev_autoplay')!=='false';
+// タイルサイズ（大きいほど画面内の枚数＝同時再生数が減り負荷が下がる）
+let gridSize=localStorage.getItem('ogref_dev_gridsize')||'medium';
+const GRID_MIN={small:'240px',medium:'300px',large:'420px'};
+function applyGridSize(){
+  document.documentElement.style.setProperty('--card-min', GRID_MIN[gridSize]||GRID_MIN.medium);
+  document.querySelectorAll('.size-btn').forEach(b=>b.classList.toggle('active', b.dataset.size===gridSize));
+}
+window.setGridSize=function(s){ if(!GRID_MIN[s])return; gridSize=s; localStorage.setItem('ogref_dev_gridsize',s); applyGridSize(); };
 let localVideoSnapshot=null;
 let localSnapshotWsId=null;
 let pendingAutoSync=false;
@@ -1608,7 +1623,7 @@ function enterWorkspace(id, name, code, color){
   document.getElementById('wsScreen').classList.add('hidden');
   document.querySelectorAll('.js-ws-name').forEach(_n=>_n.textContent=name);
   document.querySelectorAll('.js-ws-dot').forEach(_d=>_d.style.background=color||'#7c6fff');
-  initAutoplayBtn();
+  initAutoplayBtn(); applyGridSize();
   localVideoSnapshot=null;localSnapshotWsId=null;pendingAutoSync=true;_wsFolderReady=false;cachedFolderName='';wsAddPermission='all';myCanAdd=false;renderGrid._sig=null;state.moveIds=[];state.compareIds=[];
   startListeners();
   recordMembership();
