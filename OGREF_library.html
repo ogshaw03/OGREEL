@@ -316,7 +316,7 @@ body.titles-shown .cell-title-ov{opacity:1}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, getDoc, getDocs, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, getDoc, getDocFromServer, getDocs, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
@@ -709,6 +709,13 @@ $('publishSaveBtn').onclick=async()=>{
       .map(l=>({id:l.id,name:l.name||'',cols:l.cols||3,aspect:l.aspect||'16/9',gap:l.gap!=null?l.gap:12,items:l.items||[]}));
     await setDoc(doc(db,C_PUB,token),{wsId:currentWsId,wsName:currentWsName||'',pwHash,libraries:libs,updatedAt:Date.now()});
     await updateDoc(wsRef,{viewToken:token,viewPassword:pw});
+    // 永続キャッシュ有効時は setDoc がローカル成功扱いになるため、サーバーへ実際に書けたか検証する
+    let serverOk=false;
+    try{ const v=await getDocFromServer(doc(db,C_PUB,token)); serverOk=v.exists(); }catch(e){ serverOk=false; }
+    if(!serverOk){
+      notify('公開に失敗：サーバーへ保存できませんでした。Firestoreルールに lib_dev_public の許可が必要です。');
+      return;
+    }
     $('pubUrlRow').classList.remove('hidden'); $('pubUrl').textContent=viewUrl(token);
     notify('公開しました（内容を反映）');
   }catch(e){notify('公開失敗: '+e.message);}
