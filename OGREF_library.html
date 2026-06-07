@@ -204,8 +204,8 @@ body.titles-shown .cell-title-ov{opacity:1}
   </div>
   <div class="viewer-head hidden" id="viewerHeader">
     <div class="viewer-title" id="viewerTitle">📚 ライブラリ</div>
-    <button class="btn btn-ghost btn-sm js-autoplay" onclick="toggleAutoplay()" style="margin-left:8px">▶ 自動再生</button>
-    <button class="btn btn-ghost btn-sm js-titles" onclick="toggleTitles()">🏷 タイトル</button>
+    <button class="btn btn-ghost btn-sm js-autoplay" onclick="toggleAutoplay()" title="自動再生の切り替え" style="margin-left:8px;gap:5px"><span class="ap-icon">▶</span><span class="ap-label">自動再生 ON</span></button>
+    <button class="btn btn-ghost btn-sm js-titles" onclick="toggleTitles()" title="タイル上のタイトル表示/非表示" style="gap:5px"><span>🏷️</span><span class="tt-label">タイトルOFF</span></button>
     <div class="spacer"></div>
     <span class="muted" style="font-size:11px">観覧モード（編集不可）</span>
   </div>
@@ -224,8 +224,8 @@ body.titles-shown .cell-title-ov{opacity:1}
           <option value="16/9">16:9</option><option value="1/1">正方形</option><option value="4/3">4:3</option><option value="3/4">縦長</option>
         </select></div>
         <div class="grp">余白 <input type="range" id="gapSel" min="0" max="28" value="12" style="width:90px"></div>
-        <button class="btn btn-ghost btn-sm js-autoplay" onclick="toggleAutoplay()">▶ 自動再生</button>
-        <button class="btn btn-ghost btn-sm js-titles" onclick="toggleTitles()">🏷 タイトル</button>
+        <button class="btn btn-ghost btn-sm js-autoplay" onclick="toggleAutoplay()" title="自動再生の切り替え" style="gap:5px"><span class="ap-icon">▶</span><span class="ap-label">自動再生 ON</span></button>
+        <button class="btn btn-ghost btn-sm js-titles" onclick="toggleTitles()" title="タイル上のタイトル表示/非表示" style="gap:5px"><span>🏷️</span><span class="tt-label">タイトルOFF</span></button>
         <button class="btn btn-ghost btn-sm" id="addMediaBtn">＋ メディア</button>
         <button class="btn btn-ghost btn-sm" id="addTextBtn">＋ テキスト</button>
         <button class="btn btn-ghost btn-sm" id="addSepBtn">＋ 区切り線</button>
@@ -390,7 +390,7 @@ function notify(m){ const n=$('notif'); n.textContent=m; n.style.display='block'
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 window.closeModal=id=>hide(id);
-const APP_BUILD='build-0607g';   // 最新版を読めているか確認用（ヘッダーに表示）
+const APP_BUILD='build-0607h';   // 最新版を読めているか確認用（ヘッダーに表示）
 try{ const _vl=$('verLabel'); if(_vl)_vl.textContent=APP_BUILD; }catch(e){}
 async function sha256(s){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 
@@ -746,8 +746,19 @@ $('mediaSaveBtn').onclick=async()=>{
 };
 // ===== 自動再生 / タイトル表示トグル・詳細表示（右パネル/モーダル）=====
 function syncToggles(){
-  document.querySelectorAll('.js-autoplay').forEach(b=>b.classList.toggle('on',autoplayEnabled));
-  document.querySelectorAll('.js-titles').forEach(b=>b.classList.toggle('on',titlesShown));
+  document.querySelectorAll('.js-autoplay').forEach(b=>{
+    b.classList.remove('on');
+    const ic=b.querySelector('.ap-icon'), lb=b.querySelector('.ap-label');
+    if(ic)ic.textContent=autoplayEnabled?'▶':'⏸';
+    if(lb)lb.textContent=autoplayEnabled?'自動再生 ON':'サムネ表示';
+    b.style.color=autoplayEnabled?'var(--green)':'';
+  });
+  document.querySelectorAll('.js-titles').forEach(b=>{
+    b.classList.remove('on');
+    const lb=b.querySelector('.tt-label');
+    if(lb)lb.textContent=titlesShown?'タイトルON':'タイトルOFF';
+    b.style.color=titlesShown?'var(--green)':'';
+  });
 }
 function renderGridNow(){ if(viewerMode)renderViewerGrid(); else renderEditor(); }
 window.toggleAutoplay=()=>{ autoplayEnabled=!autoplayEnabled; syncToggles(); renderGridNow(); };
