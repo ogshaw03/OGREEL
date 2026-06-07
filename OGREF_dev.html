@@ -1462,6 +1462,7 @@ window.toggleWsSwitcher=async function(e){
 };
 window.showWsScreen=async function(){
   closeWsMenu();
+  closeRightPanel();
   if(unsubVideos){unsubVideos();unsubVideos=null}
   if(unsubFolders){unsubFolders();unsubFolders=null}
   if(unsubWs){unsubWs();unsubWs=null}
@@ -1591,6 +1592,7 @@ window.deleteWorkspace=async function(id, name){
 }
 
 function enterWorkspace(id, name, code, color){
+  closeRightPanel();   // WS切替時に開いている右パネルを閉じる
   currentWsId=id; currentWsName=name; currentWsCode=code;
   localStorage.setItem('ogref_dev_last_ws',JSON.stringify({id,name,code,color}));
   document.getElementById('wsScreen').classList.add('hidden');
