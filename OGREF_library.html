@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OGREF Library</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0d0d0f;--bg2:#141416;--bg3:#1c1c1f;--bg4:#232327;
+  --border:#2a2a2f;--border2:#3a3a42;
+  --text:#e8e8ec;--text2:#9a9aaa;--text3:#5a5a6a;
+  --accent:#7c6fff;--accent2:#5a4fff;--red:#ff5a5a;--green:#5affa0;
+  --radius:10px;--radius2:6px;
+  --font:'Noto Sans JP',system-ui,sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+button{cursor:pointer;border:none;background:none;color:inherit;font-family:inherit}
+input,textarea,select{font-family:inherit;color:var(--text);background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:8px 11px;outline:none;font-size:13px}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:var(--radius2);font-size:13px;font-weight:500;transition:.15s;border:1px solid transparent}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent2)}
+.btn-ghost{border:1px solid var(--border);color:var(--text2)}.btn-ghost:hover{border-color:var(--border2);color:var(--text)}
+.btn-danger{color:var(--red);border:1px solid rgba(255,90,90,.3)}.btn-danger:hover{background:rgba(255,90,90,.12)}
+.btn-sm{padding:4px 9px;font-size:12px}
+.hidden{display:none!important}
+
+/* overlays */
+.overlay{position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;overflow-y:auto}
+.brand{font-size:30px;font-weight:800;letter-spacing:1px}.brand .sub{color:var(--accent)}
+.muted{color:var(--text3);font-size:13px;line-height:1.7;max-width:460px}
+.google-btn{display:inline-flex;align-items:center;gap:10px;padding:12px 22px;background:#fff;color:#333;border-radius:var(--radius);font-size:14px;font-weight:500}
+
+/* ws screen */
+.ws-box{width:100%;max-width:480px}
+.ws-list{display:flex;flex-direction:column;gap:8px;margin:16px 0}
+.ws-item{display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer}
+.ws-item:hover{border-color:var(--border2)}
+.ws-item-name{flex:1;text-align:left;font-weight:500}
+.ws-form{display:flex;gap:8px;margin-top:8px}.ws-form input{flex:1}
+.section-label{font-size:11px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin:18px 0 8px;text-align:left}
+
+/* header */
+.header{display:flex;align-items:center;gap:12px;padding:0 16px;height:54px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0}
+.logo{font-weight:800;font-size:17px;letter-spacing:.5px}.logo .sub{color:var(--accent)}
+.logo .ver{font-size:10px;color:var(--accent);font-weight:700;margin-left:4px}
+.spacer{flex:1}
+.avatar{width:30px;height:30px;border-radius:50%;border:2px solid var(--border);cursor:pointer}
+
+/* layout */
+.app-body{display:flex;flex:1;overflow:hidden}
+.sidebar{width:240px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;padding:12px 10px}
+.sb-title{font-size:11px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;padding:4px 6px;display:flex;justify-content:space-between;align-items:center}
+.lib-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:var(--radius2);font-size:13px;color:var(--text2);cursor:pointer;margin-top:4px}
+.lib-item:hover{background:var(--bg4);color:var(--text)}
+.lib-item.active{background:var(--bg4);color:var(--text)}
+.lib-item-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-item .mini{font-size:11px;color:var(--text3);opacity:0;transition:.1s;padding:2px 5px;border-radius:4px}
+.lib-item:hover .mini{opacity:1}
+.lib-item .mini:hover{background:var(--bg2);color:var(--text)}
+.new-lib-btn{margin-top:10px;width:100%;justify-content:center}
+
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0}
+.toolbar .lib-name{font-weight:700;font-size:15px;margin-right:6px}
+.toolbar .grp{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3)}
+.toolbar select{padding:5px 8px;font-size:12px}
+.toolbar input[type=range]{accent-color:var(--accent)}
+.count-pill{font-size:11px;color:var(--text3);margin-left:auto}
+
+.grid-wrap{flex:1;overflow-y:auto;padding:18px}
+.lib-grid{display:grid;gap:var(--gap,12px);grid-template-columns:repeat(var(--cols,3),1fr);align-content:start}
+.cell{position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.cell.dragging{opacity:.4}
+.cell.drag-over{outline:2px dashed var(--accent);outline-offset:-2px}
+.cell-media{position:relative;width:100%;aspect-ratio:var(--aspect,16/9);background:#000}
+.cell-media iframe,.cell-media img,.cell-media video{position:absolute;inset:0;width:100%;height:100%;border:none;object-fit:cover}
+.cell-cap{padding:6px 9px;font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell-actions{position:absolute;top:5px;right:5px;display:flex;gap:4px;opacity:0;transition:.12s;z-index:3}
+.cell:hover .cell-actions{opacity:1}
+.cell-act{width:24px;height:24px;border-radius:5px;background:rgba(0,0,0,.7);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center}
+.cell-act:hover{background:rgba(255,255,255,.18)}
+.cell-handle{position:absolute;top:5px;left:5px;width:24px;height:24px;border-radius:5px;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;cursor:grab;opacity:0;transition:.12s;z-index:3}
+.cell:hover .cell-handle{opacity:1}
+/* full-row items */
+.cell.row{grid-column:1/-1;background:none;border:none}
+.cell.row.text{padding:6px 2px}
+.cell-text{font-size:15px;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:var(--text)}
+.cell-sep{border:none;border-top:1px solid var(--border2);margin:10px 0}
+.row .cell-actions,.row .cell-handle{opacity:.5;position:static;background:none;color:var(--text3);display:inline-flex}
+.row:hover .cell-actions{opacity:1}
+.row-bar{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.empty{color:var(--text3);font-size:13px;text-align:center;padding:60px 20px;grid-column:1/-1}
+
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;width:100%;max-width:460px;max-height:88vh;overflow-y:auto}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:15px 18px;border-bottom:1px solid var(--border)}
+.modal-title{font-weight:700;font-size:15px}
+.modal-body{padding:18px}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:13px 18px;border-top:1px solid var(--border)}
+.frow{margin-bottom:13px}.frow label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px}
+.frow input,.frow textarea,.frow select{width:100%}.frow textarea{height:90px;resize:vertical}
+.url-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:9px 11px;font-size:12px;word-break:break-all;color:var(--accent)}
+
+/* viewer */
+.viewer .toolbar,.viewer .new-lib-btn,.viewer .cell-actions,.viewer .cell-handle,.viewer .sb-title .btn{display:none!important}
+.viewer-head{display:flex;align-items:center;gap:10px;padding:0 16px;height:54px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0}
+.viewer-title{font-weight:700;font-size:16px}
+.notif{position:fixed;bottom:22px;right:22px;background:var(--bg4);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 15px;font-size:13px;z-index:5000;display:none;max-width:340px}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="overlay" id="loading"><div class="muted">読み込み中...</div></div>
+
+<!-- LOGIN -->
+<div class="overlay hidden" id="loginScreen">
+  <div class="brand">OGREF <span class="sub">Library</span></div>
+  <div class="muted">ワークスペースごとにライブラリを作成し、レイアウトを組んで公開できます。<br>編集にはログインが必要です（観覧は不要）。</div>
+  <button class="google-btn" id="loginBtn">Googleでログイン</button>
+</div>
+
+<!-- WORKSPACE SELECT -->
+<div class="overlay hidden" id="wsScreen">
+  <div class="ws-box">
+    <div class="brand" style="font-size:24px">OGREF <span class="sub">Library</span></div>
+    <div class="section-label">あなたのワークスペース</div>
+    <div class="ws-list" id="wsList"></div>
+    <div class="section-label">新規作成</div>
+    <div class="ws-form">
+      <input id="newWsName" placeholder="ワークスペース名" maxlength="40">
+      <button class="btn btn-primary" id="createWsBtn">作成</button>
+    </div>
+    <div style="margin-top:24px;display:flex;justify-content:center;gap:12px;align-items:center">
+      <span class="muted" id="wsUserEmail" style="font-size:12px"></span>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">ログアウト</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEWER PASSWORD GATE -->
+<div class="overlay hidden" id="pwScreen">
+  <div class="brand" style="font-size:22px">🔒 観覧用ライブラリ</div>
+  <div class="muted" id="pwWsName"></div>
+  <div style="display:flex;gap:8px">
+    <input type="password" id="pwInput" placeholder="パスワード" style="width:200px">
+    <button class="btn btn-primary" id="pwBtn">開く</button>
+  </div>
+  <div class="muted" id="pwError" style="color:var(--red)"></div>
+</div>
+
+<!-- MAIN APP (editor + viewer share this) -->
+<div id="app" class="hidden" style="display:flex;flex-direction:column;height:100%">
+  <div class="header" id="editorHeader">
+    <button class="btn btn-ghost btn-sm" id="backWsBtn" title="ワークスペース選択へ">🏠</button>
+    <div class="logo">OGREF <span class="sub">Library</span><span class="ver" id="verLabel">dev</span></div>
+    <span class="muted" id="wsNameLabel" style="font-size:13px"></span>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost btn-sm" id="publishBtn">🔗 公開設定</button>
+    <img class="avatar" id="avatar" src="">
+  </div>
+  <div class="viewer-head hidden" id="viewerHeader">
+    <div class="viewer-title" id="viewerTitle">📚 ライブラリ</div>
+    <div class="spacer"></div>
+    <span class="muted" style="font-size:11px">観覧モード（編集不可）</span>
+  </div>
+
+  <div class="app-body">
+    <div class="sidebar">
+      <div class="sb-title"><span>ライブラリ</span><span id="libCount" style="font-weight:400">0/10</span></div>
+      <div id="libList"></div>
+      <button class="btn btn-ghost new-lib-btn" id="newLibBtn">＋ 新しいライブラリ</button>
+    </div>
+    <div class="main">
+      <div class="toolbar" id="toolbar">
+        <span class="lib-name" id="curLibName">—</span>
+        <div class="grp">列数 <select id="colsSel"><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
+        <div class="grp">形 <select id="aspectSel">
+          <option value="16/9">16:9</option><option value="1/1">正方形</option><option value="4/3">4:3</option><option value="3/4">縦長</option>
+        </select></div>
+        <div class="grp">余白 <input type="range" id="gapSel" min="0" max="28" value="12" style="width:90px"></div>
+        <button class="btn btn-ghost btn-sm" id="addMediaBtn">＋ メディア</button>
+        <button class="btn btn-ghost btn-sm" id="addTextBtn">＋ テキスト</button>
+        <button class="btn btn-ghost btn-sm" id="addSepBtn">＋ 区切り線</button>
+        <span class="count-pill" id="itemCount">0/200</span>
+      </div>
+      <div class="grid-wrap">
+        <div class="lib-grid" id="libGrid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MEDIA MODAL -->
+<div class="modal-bg hidden" id="mediaModal">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title">メディアを追加</div><button class="btn-sm" onclick="closeModal('mediaModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="frow"><label>URL（YouTube / Vimeo / Google Drive / 画像URL 等）</label><input id="mediaUrl" placeholder="https://..."></div>
+      <div class="frow"><label>種別</label><select id="mediaKind"><option value="auto">自動判定</option><option value="video">動画</option><option value="image">画像</option></select></div>
+      <div class="frow"><label>キャプション（任意）</label><input id="mediaCap" placeholder="タイトル・説明（任意）"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('mediaModal')">キャンセル</button><button class="btn btn-primary" id="mediaSaveBtn">追加</button></div>
+  </div>
+</div>
+
+<!-- TEXT MODAL -->
+<div class="modal-bg hidden" id="textModal">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title" id="textModalTitle">テキストを追加</div><button class="btn-sm" onclick="closeModal('textModal')">✕</button></div>
+    <div class="modal-body"><div class="frow"><label>本文</label><textarea id="textInput" placeholder="見出しや説明を入力..."></textarea></div></div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('textModal')">キャンセル</button><button class="btn btn-primary" id="textSaveBtn">保存</button></div>
+  </div>
+</div>
+
+<!-- PUBLISH MODAL -->
+<div class="modal-bg hidden" id="publishModal">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title">🔗 観覧URLの公開設定</div><button class="btn-sm" onclick="closeModal('publishModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="muted" style="text-align:left;margin-bottom:12px">このワークスペースのライブラリを、パスワード付きの観覧用URLで公開します（編集不可・読み取り専用）。</div>
+      <div class="frow"><label>観覧パスワード</label><input type="text" id="pubPassword" placeholder="閲覧者に伝えるパスワード"></div>
+      <div id="pubUrlRow" class="hidden">
+        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:5px">観覧用URL（クリックでコピー）</label>
+        <div class="url-box" id="pubUrl" onclick="copyPubUrl()"></div>
+      </div>
+      <div class="muted" style="text-align:left;margin-top:10px;font-size:11px">※ URLとパスワードを知っている人だけが閲覧できます（限定公開）。公開後に内容を変更したら「公開/更新」で反映してください。</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="unpublishBtn">公開停止</button>
+      <button class="btn btn-primary" id="publishSaveBtn">公開 / 更新</button>
+    </div>
+  </div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, getDoc, getDocs, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyASqL2Qp8sGrkzHz7J_HhE6QXntAZOO7RE",
+  authDomain: "animref-ef532.firebaseapp.com",
+  projectId: "animref-ef532",
+  storageBucket: "animref-ef532.firebasestorage.app",
+  messagingSenderId: "1029274074603",
+  appId: "1:1029274074603:web:f0ddc3eb69e35a47276dae"
+};
+const app = initializeApp(firebaseConfig);
+let db;
+try{ db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
+catch(e){ db = getFirestore(app); }
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+// ===== 設定（OGREFとは別系統。lib_ プレフィックス）=====
+const DEV_MODE = true;
+const C_WS  = DEV_MODE ? 'lib_dev_workspaces' : 'lib_workspaces';
+const C_PUB = DEV_MODE ? 'lib_dev_public'     : 'lib_public';
+const LIB_LIMIT = 10;
+const ITEM_LIMIT = 200;
+
+let currentUser=null, currentWsId=null, currentWsName=null;
+let libraries=[], curLib=null, unsubLibs=null;
+let viewerMode=false, viewData=null;
+
+const $=id=>document.getElementById(id);
+function show(id){ $(id).classList.remove('hidden'); }
+function hide(id){ $(id).classList.add('hidden'); }
+function notify(m){ const n=$('notif'); n.textContent=m; n.style.display='block'; clearTimeout(n._t); n._t=setTimeout(()=>n.style.display='none',3000); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
+window.closeModal=id=>hide(id);
+async function sha256(s){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+
+// ===== メディア判定 / 埋め込み =====
+function ytId(u){ const m=u.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/); return m?m[1]:null; }
+function vmId(u){ const m=u.match(/vimeo\.com\/(?:video\/)?(\d+)/); return m?m[1]:null; }
+function gdId(u){ const m=u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?id=)([\w-]+)/); return m?m[1]:(u.match(/[?&]id=([\w-]+)/)||[])[1]||null; }
+function guessKind(u){ return /\.(png|jpe?g|gif|webp|svg|bmp|avif)(\?|$)/i.test(u) ? 'image' : 'video'; }
+function mediaEmbedHtml(it){
+  const u=it.url||'';
+  if(it.kind==='image'){ return `<img src="${esc(u)}" alt="" loading="lazy">`; }
+  const yt=ytId(u); if(yt) return `<iframe src="https://www.youtube.com/embed/${yt}" allow="autoplay;encrypted-media" allowfullscreen></iframe>`;
+  const vm=vmId(u); if(vm) return `<iframe src="https://player.vimeo.com/video/${vm}" allow="autoplay;fullscreen" allowfullscreen></iframe>`;
+  const gd=gdId(u); if(gd) return `<iframe src="https://drive.google.com/file/d/${gd}/preview" allow="autoplay" allowfullscreen></iframe>`;
+  // それ以外は汎用iframe（再生できない場合あり）
+  return `<iframe src="${esc(u)}" allowfullscreen></iframe>`;
+}
+
+// ===== 認証 / 画面遷移 =====
+onAuthStateChanged(auth, user=>{
+  if(viewerMode) return;          // 観覧モードは認証に依存しない
+  hide('loading');
+  currentUser=user;
+  if(user){
+    $('avatar').src=user.photoURL||''; $('wsUserEmail').textContent=user.email||'';
+    hide('loginScreen'); openWsScreen();
+  } else {
+    hide('wsScreen'); hide('app'); show('loginScreen');
+  }
+});
+$('loginBtn').onclick=()=>signInWithPopup(auth,provider).catch(e=>notify('ログイン失敗: '+e.message));
+$('logoutBtn').onclick=()=>signOut(auth);
+$('backWsBtn').onclick=()=>{ if(unsubLibs){unsubLibs();unsubLibs=null;} hide('app'); openWsScreen(); };
+
+// ===== ワークスペース =====
+async function openWsScreen(){
+  hide('app'); show('wsScreen');
+  const el=$('wsList'); el.innerHTML='<div class="muted">読み込み中...</div>';
+  let list=[];
+  try{ const snap=await getDocs(query(collection(db,C_WS),where('ownerUid','==',currentUser.uid))); list=snap.docs.map(d=>({id:d.id,...d.data()})); }
+  catch(e){ el.innerHTML='<div class="muted" style="color:var(--red)">取得失敗: '+esc(e.message)+'</div>'; return; }
+  list.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  if(!list.length){ el.innerHTML='<div class="muted">まだありません。下から作成してください。</div>'; return; }
+  el.innerHTML='';
+  list.forEach(ws=>{
+    const it=document.createElement('div'); it.className='ws-item';
+    it.innerHTML=`<span class="ws-item-name">${esc(ws.name)}</span><button class="btn btn-danger btn-sm">削除</button>`;
+    it.querySelector('.ws-item-name').onclick=()=>enterWs(ws.id,ws.name);
+    it.querySelector('button').onclick=async(e)=>{ e.stopPropagation(); if(!confirm(`「${ws.name}」を削除しますか？\n中のライブラリも全て削除されます。`))return; await deleteWs(ws.id); openWsScreen(); };
+    el.appendChild(it);
+  });
+}
+$('createWsBtn').onclick=async()=>{
+  const name=$('newWsName').value.trim(); if(!name){notify('名前を入力してください');return;}
+  try{
+    const ref=await addDoc(collection(db,C_WS),{name,ownerUid:currentUser.uid,createdAt:Date.now()});
+    $('newWsName').value=''; enterWs(ref.id,name);
+  }catch(e){notify('作成失敗: '+e.message);}
+};
+async function deleteWs(wsId){
+  try{
+    const libs=await getDocs(collection(db,C_WS,wsId,'libraries'));
+    for(const d of libs.docs) await deleteDoc(d.ref);
+    // 公開停止（紐づくpublicドキュメントがあれば）
+    const wsDoc=await getDoc(doc(db,C_WS,wsId)); const tok=wsDoc.data()?.viewToken;
+    if(tok){ try{await deleteDoc(doc(db,C_PUB,tok));}catch(e){} }
+    await deleteDoc(doc(db,C_WS,wsId));
+    notify('削除しました');
+  }catch(e){notify('削除失敗: '+e.message);}
+}
+
+function enterWs(id,name){
+  currentWsId=id; currentWsName=name; curLib=null;
+  hide('wsScreen'); show('app');
+  $('wsNameLabel').textContent='/ '+name;
+  if(unsubLibs)unsubLibs();
+  unsubLibs=onSnapshot(query(collection(db,C_WS,currentWsId,'libraries')), snap=>{
+    libraries=snap.docs.map(d=>({id:d.id,...d.data()}));
+    libraries.sort((a,b)=>(a.order||0)-(b.order||0));
+    renderLibList();
+    if(curLib){ const fresh=libraries.find(l=>l.id===curLib.id); if(fresh)curLib=fresh; else curLib=null; }
+    if(!curLib && libraries.length) selectLib(libraries[0].id);
+    else renderEditor();
+  }, e=>notify('ライブラリ取得エラー: '+e.message));
+}
+
+// ===== ライブラリ一覧 =====
+function renderLibList(){
+  $('libCount').textContent=`${libraries.length}/${LIB_LIMIT}`;
+  const el=$('libList'); el.innerHTML='';
+  libraries.forEach(l=>{
+    const it=document.createElement('div'); it.className='lib-item'+(curLib&&curLib.id===l.id?' active':'');
+    const n=(l.items||[]).filter(x=>x.type==='media').length;
+    it.innerHTML=`<span class="lib-item-name">${esc(l.name)}</span><span class="mini" data-a="ren">✏️</span><span class="mini" data-a="del">🗑️</span>`;
+    it.querySelector('.lib-item-name').onclick=()=>selectLib(l.id);
+    it.querySelector('[data-a=ren]').onclick=(e)=>{e.stopPropagation();renameLib(l);};
+    it.querySelector('[data-a=del]').onclick=(e)=>{e.stopPropagation();deleteLib(l);};
+    el.appendChild(it);
+  });
+  $('newLibBtn').style.display=(libraries.length>=LIB_LIMIT)?'none':'';
+}
+$('newLibBtn').onclick=async()=>{
+  if(libraries.length>=LIB_LIMIT){notify(`ライブラリは1ワークスペース${LIB_LIMIT}個までです`);return;}
+  const name=prompt('ライブラリ名'); if(!name||!name.trim())return;
+  try{
+    const ref=await addDoc(collection(db,C_WS,currentWsId,'libraries'),{name:name.trim(),order:libraries.length,cols:3,aspect:'16/9',gap:12,items:[],createdAt:Date.now(),updatedAt:Date.now(),ownerUid:currentUser.uid});
+    selectLib(ref.id);
+  }catch(e){notify('作成失敗: '+e.message);}
+};
+async function renameLib(l){ const name=prompt('ライブラリ名',l.name); if(!name||!name.trim())return; try{await updateDoc(doc(db,C_WS,currentWsId,'libraries',l.id),{name:name.trim()});}catch(e){notify('失敗');} }
+async function deleteLib(l){ if(!confirm(`「${l.name}」を削除しますか？`))return; try{await deleteDoc(doc(db,C_WS,currentWsId,'libraries',l.id)); if(curLib&&curLib.id===l.id)curLib=null;}catch(e){notify('失敗');} }
+function selectLib(id){ curLib=libraries.find(l=>l.id===id)||null; renderLibList(); renderEditor(); }
+
+// ===== エディタ =====
+function renderEditor(){
+  const grid=$('libGrid');
+  if(!curLib){ $('curLibName').textContent='—'; $('itemCount').textContent='0/'+ITEM_LIMIT; grid.innerHTML='<div class="empty">左の「＋ 新しいライブラリ」から作成してください</div>'; return; }
+  $('curLibName').textContent=curLib.name;
+  $('colsSel').value=String(curLib.cols||3);
+  $('aspectSel').value=curLib.aspect||'16/9';
+  $('gapSel').value=String(curLib.gap!=null?curLib.gap:12);
+  applyGridStyle(grid);
+  const items=curLib.items||[];
+  $('itemCount').textContent=items.filter(x=>x.type==='media').length+'/'+ITEM_LIMIT;
+  grid.innerHTML='';
+  if(!items.length){ grid.innerHTML='<div class="empty">ツールバーからメディア・テキスト・区切り線を追加してください</div>'; return; }
+  items.forEach((it,idx)=>grid.appendChild(makeCell(it,idx)));
+}
+function applyGridStyle(grid){
+  grid.style.setProperty('--cols', curLib.cols||3);
+  grid.style.setProperty('--aspect', curLib.aspect||'16/9');
+  grid.style.setProperty('--gap', (curLib.gap!=null?curLib.gap:12)+'px');
+}
+function makeCell(it,idx){
+  const c=document.createElement('div');
+  if(it.type==='text'){
+    c.className='cell row text';
+    c.innerHTML=`<div class="row-bar"><span class="cell-handle">⠿</span><span class="cell-actions"><button class="cell-act" data-a="edit">✏️</button><button class="cell-act" data-a="del">🗑️</button></span></div><div class="cell-text">${esc(it.content||'')}</div>`;
+  } else if(it.type==='separator'){
+    c.className='cell row';
+    c.innerHTML=`<div class="row-bar"><span class="cell-handle">⠿</span><span class="cell-actions"><button class="cell-act" data-a="del">🗑️</button></span></div><hr class="cell-sep">`;
+  } else {
+    c.className='cell';
+    c.innerHTML=`<div class="cell-handle">⠿</div><div class="cell-actions"><button class="cell-act" data-a="del">🗑️</button></div><div class="cell-media">${mediaEmbedHtml(it)}</div>${it.cap?`<div class="cell-cap">${esc(it.cap)}</div>`:''}`;
+  }
+  if(!viewerMode){
+    c.querySelectorAll('[data-a=del]').forEach(b=>b.onclick=()=>removeItem(idx));
+    const ed=c.querySelector('[data-a=edit]'); if(ed)ed.onclick=()=>editText(idx);
+    setupDrag(c,idx);
+  }
+  return c;
+}
+// 設定変更
+$('colsSel').onchange=()=>saveLibMeta({cols:parseInt($('colsSel').value)});
+$('aspectSel').onchange=()=>saveLibMeta({aspect:$('aspectSel').value});
+$('gapSel').oninput=()=>{ if(curLib){curLib.gap=parseInt($('gapSel').value); applyGridStyle($('libGrid'));} };
+$('gapSel').onchange=()=>saveLibMeta({gap:parseInt($('gapSel').value)});
+async function saveLibMeta(patch){
+  if(!curLib)return; Object.assign(curLib,patch); applyGridStyle($('libGrid'));
+  try{await updateDoc(doc(db,C_WS,currentWsId,'libraries',curLib.id),{...patch,updatedAt:Date.now()});}catch(e){notify('保存失敗');}
+}
+async function saveItems(){
+  if(!curLib)return;
+  try{await updateDoc(doc(db,C_WS,currentWsId,'libraries',curLib.id),{items:curLib.items,updatedAt:Date.now()});}catch(e){notify('保存失敗: '+e.message);}
+}
+function removeItem(idx){ curLib.items.splice(idx,1); renderEditor(); saveItems(); }
+
+// 追加: メディア
+$('addMediaBtn').onclick=()=>{ if(!curLib){notify('先にライブラリを選択/作成してください');return;} $('mediaUrl').value='';$('mediaCap').value='';$('mediaKind').value='auto'; show('mediaModal'); $('mediaUrl').focus(); };
+$('mediaSaveBtn').onclick=()=>{
+  const url=$('mediaUrl').value.trim(); if(!url){notify('URLを入力してください');return;}
+  const media=(curLib.items||[]).filter(x=>x.type==='media').length;
+  if(media>=ITEM_LIMIT){notify(`メディアは1ライブラリ${ITEM_LIMIT}個までです`);return;}
+  let kind=$('mediaKind').value; if(kind==='auto')kind=guessKind(url);
+  curLib.items=curLib.items||[]; curLib.items.push({id:uid(),type:'media',kind,url,cap:$('mediaCap').value.trim()});
+  closeModal('mediaModal'); renderEditor(); saveItems();
+};
+// 追加: テキスト
+let textEditIdx=-1;
+$('addTextBtn').onclick=()=>{ if(!curLib){notify('先にライブラリを選択してください');return;} textEditIdx=-1; $('textModalTitle').textContent='テキストを追加'; $('textInput').value=''; show('textModal'); $('textInput').focus(); };
+function editText(idx){ textEditIdx=idx; $('textModalTitle').textContent='テキストを編集'; $('textInput').value=curLib.items[idx].content||''; show('textModal'); $('textInput').focus(); }
+$('textSaveBtn').onclick=()=>{
+  const content=$('textInput').value; if(!content.trim()){notify('本文を入力してください');return;}
+  if(textEditIdx>=0){ curLib.items[textEditIdx].content=content; }
+  else { curLib.items=curLib.items||[]; curLib.items.push({id:uid(),type:'text',content}); }
+  closeModal('textModal'); renderEditor(); saveItems();
+};
+// 追加: セパレーター
+$('addSepBtn').onclick=()=>{ if(!curLib){notify('先にライブラリを選択してください');return;} curLib.items=curLib.items||[]; curLib.items.push({id:uid(),type:'separator'}); renderEditor(); saveItems(); };
+
+// ドラッグ並べ替え
+let dragIdx=-1;
+function setupDrag(cell,idx){
+  cell.setAttribute('draggable','true');
+  cell.addEventListener('dragstart',e=>{ dragIdx=idx; cell.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
+  cell.addEventListener('dragend',()=>{ cell.classList.remove('dragging'); document.querySelectorAll('.cell.drag-over').forEach(x=>x.classList.remove('drag-over')); });
+  cell.addEventListener('dragover',e=>{ e.preventDefault(); cell.classList.add('drag-over'); });
+  cell.addEventListener('dragleave',()=>cell.classList.remove('drag-over'));
+  cell.addEventListener('drop',e=>{ e.preventDefault(); cell.classList.remove('drag-over'); if(dragIdx<0||dragIdx===idx)return; const arr=curLib.items; const [m]=arr.splice(dragIdx,1); arr.splice(idx,0,m); dragIdx=-1; renderEditor(); saveItems(); });
+}
+
+// ===== 公開（観覧URL）=====
+$('publishBtn').onclick=async()=>{
+  if(!currentWsId)return;
+  const wsDoc=await getDoc(doc(db,C_WS,currentWsId)); const d=wsDoc.data()||{};
+  $('pubPassword').value=d.viewPassword||'';
+  if(d.viewToken){ $('pubUrlRow').classList.remove('hidden'); $('pubUrl').textContent=viewUrl(d.viewToken); }
+  else $('pubUrlRow').classList.add('hidden');
+  show('publishModal');
+};
+function viewUrl(token){ return location.origin+location.pathname+'?view='+token; }
+window.copyPubUrl=()=>{ navigator.clipboard.writeText($('pubUrl').textContent).then(()=>notify('URLをコピーしました')).catch(()=>{}); };
+$('publishSaveBtn').onclick=async()=>{
+  const pw=$('pubPassword').value.trim(); if(!pw){notify('パスワードを設定してください');return;}
+  try{
+    const wsRef=doc(db,C_WS,currentWsId); const wsDoc=await getDoc(wsRef); let token=wsDoc.data()?.viewToken;
+    if(!token){ token=uid()+uid(); }
+    const pwHash=await sha256(pw);
+    // 公開ミラーを作成（lib_dev_public/{token}）。観覧側は認証なしで読める。
+    const libsSnap=await getDocs(query(collection(db,C_WS,currentWsId,'libraries')));
+    let libs=libsSnap.docs.map(x=>({id:x.id,...x.data()})).sort((a,b)=>(a.order||0)-(b.order||0))
+      .map(l=>({id:l.id,name:l.name||'',cols:l.cols||3,aspect:l.aspect||'16/9',gap:l.gap!=null?l.gap:12,items:l.items||[]}));
+    await setDoc(doc(db,C_PUB,token),{wsId:currentWsId,wsName:currentWsName||'',pwHash,libraries:libs,updatedAt:Date.now()});
+    await updateDoc(wsRef,{viewToken:token,viewPassword:pw});
+    $('pubUrlRow').classList.remove('hidden'); $('pubUrl').textContent=viewUrl(token);
+    notify('公開しました（内容を反映）');
+  }catch(e){notify('公開失敗: '+e.message);}
+};
+$('unpublishBtn').onclick=async()=>{
+  if(!confirm('観覧URLを公開停止しますか？'))return;
+  try{
+    const wsRef=doc(db,C_WS,currentWsId); const token=(await getDoc(wsRef)).data()?.viewToken;
+    if(token){ try{await deleteDoc(doc(db,C_PUB,token));}catch(e){} }
+    await updateDoc(wsRef,{viewToken:'',viewPassword:''});
+    $('pubUrlRow').classList.add('hidden'); $('pubPassword').value='';
+    notify('公開を停止しました');
+  }catch(e){notify('失敗: '+e.message);}
+};
+
+// ===== 観覧モード =====
+async function initViewer(token){
+  viewerMode=true;
+  document.body.classList.add('viewer');
+  hide('loading');
+  let snap;
+  try{ snap=await getDoc(doc(db,C_PUB,token)); }catch(e){ show('pwScreen'); $('pwWsName').textContent=''; $('pwError').textContent='読み込みに失敗しました'; return; }
+  if(!snap.exists()){ show('pwScreen'); $('pwWsName').textContent='このURLは無効か、公開が停止されています。'; $('pwInput').style.display='none'; $('pwBtn').style.display='none'; return; }
+  viewData=snap.data();
+  show('pwScreen'); $('pwWsName').textContent=viewData.wsName||'';
+  $('pwBtn').onclick=async()=>{
+    const h=await sha256($('pwInput').value);
+    if(h===viewData.pwHash){ hide('pwScreen'); openViewer(); }
+    else { $('pwError').textContent='パスワードが違います'; }
+  };
+  $('pwInput').addEventListener('keydown',e=>{ if(e.key==='Enter')$('pwBtn').click(); });
+}
+function openViewer(){
+  show('app');
+  hide('editorHeader'); show('viewerHeader');
+  $('viewerTitle').textContent='📚 '+(viewData.wsName||'ライブラリ');
+  libraries=(viewData.libraries||[]);
+  curLib=libraries[0]||null;
+  // サイドバー（読み取り専用）
+  $('libCount').textContent=libraries.length+'件';
+  const el=$('libList'); el.innerHTML='';
+  libraries.forEach(l=>{
+    const it=document.createElement('div'); it.className='lib-item'+(curLib&&curLib.id===l.id?' active':'');
+    it.innerHTML=`<span class="lib-item-name">${esc(l.name)}</span>`;
+    it.onclick=()=>{ curLib=l; document.querySelectorAll('#libList .lib-item').forEach(x=>x.classList.remove('active')); it.classList.add('active'); renderViewerGrid(); };
+    el.appendChild(it);
+  });
+  renderViewerGrid();
+}
+function renderViewerGrid(){
+  const grid=$('libGrid');
+  if(!curLib){ grid.innerHTML='<div class="empty">ライブラリがありません</div>'; return; }
+  applyGridStyle(grid);
+  grid.innerHTML='';
+  (curLib.items||[]).forEach((it,idx)=>grid.appendChild(makeCell(it,idx)));
+}
+
+// ===== 起動 =====
+(function start(){
+  const params=new URLSearchParams(location.search);
+  const token=params.get('view');
+  if(token){ initViewer(token); }
+  // それ以外は onAuthStateChanged が処理
+})();
+</script>
+</body>
+</html>
