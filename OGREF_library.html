@@ -39,6 +39,10 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 .tp-line{height:5px;border-radius:3px;flex:1}
 .theme-cap{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;font-size:12px;font-weight:600;color:var(--text)}
 .theme-cap .chk{color:var(--accent);font-weight:700}
+.custom-theme{margin-top:16px;padding:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2)}
+.custom-theme.active{border-color:var(--accent)}
+.custom-theme input[type=color]{width:40px;height:30px;padding:2px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);cursor:pointer}
+.custom-active-tag{font-size:10px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:10px;padding:1px 8px}
 
 /* overlays */
 .overlay{position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;overflow-y:auto}
@@ -370,6 +374,15 @@ body.titles-shown .cell-title-ov{opacity:1}
     <div class="modal-body">
       <div class="muted" style="font-size:11px;margin-bottom:12px;text-align:left">このライブラリのテーマを選択します（観覧URLにも反映されます）。</div>
       <div class="theme-grid" id="themeGrid"></div>
+      <div class="custom-theme" id="customTheme">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:8px">🎨 オリジナル（カスタム）<span class="custom-active-tag hidden" id="customActiveTag">使用中</span></div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2)">アクセント色 <input type="color" id="customAccent" value="#7c6fff"></label>
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2)">背景色 <input type="color" id="customBg" value="#101018"></label>
+          <div class="theme-prev" id="customPrev" style="width:128px;height:62px;border-radius:8px;border:1px solid var(--border)"></div>
+          <button class="btn btn-primary btn-sm" id="customApplyBtn">このテーマにする</button>
+        </div>
+      </div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('themeModal')">閉じる</button></div>
   </div>
@@ -418,7 +431,7 @@ function notify(m){ const n=$('notif'); n.textContent=m; n.style.display='block'
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 window.closeModal=id=>hide(id);
-const APP_BUILD='build-0607l';   // 最新版を読めているか確認用（ヘッダーに表示）
+const APP_BUILD='build-0607m';   // 最新版を読めているか確認用（ヘッダーに表示）
 try{ const _vl=$('verLabel'); if(_vl)_vl.textContent=APP_BUILD; }catch(e){}
 
 // ===== テーマカラー（ライブラリごと・アクセント＋背景） =====
@@ -436,10 +449,25 @@ const THEMES={
   peach:{label:'ピーチ', v:{'--bg':'#eed6c4','--bg2':'#f4e2d4','--bg3':'#e3c5ab','--bg4':'#d9b89b','--border':'#cfaa8b','--border2':'#c08e64','--text':'#472a18','--text2':'#855736','--text3':'#ad8765','--accent':'#ec8447','--accent2':'#da692c'}},
   dreamy:{label:'ゆめかわ', v:{'--bg':'#e7d5e7','--bg2':'#f0e2ef','--bg3':'#dbc6db','--bg4':'#d0b8d0','--border':'#c6aac6','--border2':'#b692b6','--text':'#41243d','--text2':'#7e4f84','--text3':'#ad84af','--accent':'#dc7bba','--accent2':'#c95da6'}}
 };
-function applyTheme(key){
-  const t=THEMES[key]||THEMES.purple;
-  const b=document.body;
-  Object.entries(t.v).forEach(([k,val])=>b.style.setProperty(k,val));
+// 色ユーティリティ（カスタムテーマ生成用）
+function _h2(n){ return Math.max(0,Math.min(255,Math.round(n))).toString(16).padStart(2,'0'); }
+function hexToRgb(h){ h=String(h||'').replace('#',''); if(h.length===3)h=h.split('').map(c=>c+c).join(''); return [parseInt(h.slice(0,2),16)||0,parseInt(h.slice(2,4),16)||0,parseInt(h.slice(4,6),16)||0]; }
+function rgbToHex(a){ return '#'+a.map(_h2).join(''); }
+function mix(a,b,t){ const A=hexToRgb(a),B=hexToRgb(b); return rgbToHex([0,1,2].map(i=>A[i]+(B[i]-A[i])*t)); }
+function lum(h){ const c=hexToRgb(h).map(v=>{ v/=255; return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4); }); return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2]; }
+// アクセント色＋背景色から全パレットを自動生成
+function customThemeV(accent,bg){
+  const W='#ffffff',K='#000000', dark=lum(bg)<0.4;
+  if(dark) return {'--bg':bg,'--bg2':mix(bg,W,0.05),'--bg3':mix(bg,W,0.10),'--bg4':mix(bg,W,0.15),'--border':mix(bg,W,0.16),'--border2':mix(bg,W,0.28),'--text':mix(bg,W,0.92),'--text2':mix(bg,W,0.60),'--text3':mix(bg,W,0.38),'--accent':accent,'--accent2':mix(accent,K,0.15)};
+  return {'--bg':bg,'--bg2':mix(bg,W,0.55),'--bg3':mix(bg,K,0.06),'--bg4':mix(bg,K,0.12),'--border':mix(bg,K,0.14),'--border2':mix(bg,K,0.28),'--text':mix(bg,K,0.82),'--text2':mix(bg,K,0.52),'--text3':mix(bg,K,0.32),'--accent':accent,'--accent2':mix(accent,K,0.15)};
+}
+function themeV(theme,custom){
+  if(theme==='custom' && custom && custom.accent && custom.bg) return customThemeV(custom.accent,custom.bg);
+  return (THEMES[theme]||THEMES.purple).v;
+}
+function applyTheme(theme,custom){
+  const v=themeV(theme,custom), b=document.body;
+  Object.entries(v).forEach(([k,val])=>b.style.setProperty(k,val));
 }
 async function sha256(s){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 
@@ -708,8 +736,8 @@ function renderEditor(){
   $('colsSel').value=String(curLib.cols||3);
   $('aspectSel').value=curLib.aspect||'16/9';
   $('gapSel').value=String(curLib.gap!=null?curLib.gap:12);
-  updateThemeBtn(curLib.theme);
-  applyTheme(curLib.theme);
+  updateThemeBtn(curLib.theme,curLib.themeCustom);
+  applyTheme(curLib.theme,curLib.themeCustom);
   applyGridStyle(grid);
   const items=curLib.items||[];
   $('itemCount').textContent=items.filter(x=>x.type==='media').length+'/'+ITEM_LIMIT;
@@ -752,15 +780,17 @@ $('colsSel').onchange=()=>saveLibMeta({cols:parseInt($('colsSel').value)});
 $('aspectSel').onchange=()=>saveLibMeta({aspect:$('aspectSel').value});
 $('gapSel').oninput=()=>{ if(curLib){curLib.gap=parseInt($('gapSel').value); applyGridStyle($('libGrid'));} };
 $('gapSel').onchange=()=>saveLibMeta({gap:parseInt($('gapSel').value)});
-// テーマ選択（プレビューパネル）
+// テーマ選択（プレビューパネル＋カスタム）
 function themeKey(k){ return THEMES[k]?k:'purple'; }
-function updateThemeBtn(k){
-  k=themeKey(k); const t=THEMES[k];
-  const sw=$('themeSwatch'); if(sw){ sw.style.background=t.v['--accent']; sw.style.borderColor=t.v['--border2']; }
-  const lb=$('themeBtnLabel'); if(lb)lb.textContent=t.label;
+function updateThemeBtn(theme,custom){
+  let accent,label;
+  if(theme==='custom' && custom && custom.accent){ accent=custom.accent; label='カスタム'; }
+  else { const t=THEMES[themeKey(theme)]; accent=t.v['--accent']; label=t.label; }
+  const sw=$('themeSwatch'); if(sw){ sw.style.background=accent; }
+  const lb=$('themeBtnLabel'); if(lb)lb.textContent=label;
 }
 function themeCardHtml(k){
-  const t=THEMES[k], v=t.v, sel=(curLib&&themeKey(curLib.theme)===k)?' sel':'';
+  const t=THEMES[k], v=t.v, sel=(curLib&&curLib.theme!=='custom'&&themeKey(curLib.theme)===k)?' sel':'';
   return `<div class="theme-card${sel}" data-key="${k}">
     <div class="theme-prev" style="background:${v['--bg']}">
       <div class="tp-bar" style="background:${v['--accent']}"></div>
@@ -772,16 +802,44 @@ function themeCardHtml(k){
     <div class="theme-cap" style="background:${v['--bg2']}"><span style="color:${v['--text']}">${t.label}</span>${sel?'<span class="chk" style="color:'+v['--accent']+'">✓</span>':''}</div>
   </div>`;
 }
+function renderCustomPrev(){
+  const v=customThemeV($('customAccent').value,$('customBg').value), p=$('customPrev');
+  p.style.background=v['--bg'];
+  p.innerHTML=`<div style="padding:9px;display:flex;flex-direction:column;gap:6px;height:100%">
+    <div style="height:7px;border-radius:3px;width:55%;background:${v['--accent']}"></div>
+    <div style="flex:1;border-radius:5px;background:${v['--bg2']};border:1px solid ${v['--border']};display:flex;align-items:center;gap:5px;padding:7px">
+      <span style="width:9px;height:9px;border-radius:50%;background:${v['--accent']}"></span>
+      <span style="flex:1;height:4px;border-radius:2px;background:${v['--border2']}"></span>
+    </div></div>`;
+}
 window.openThemeModal=function(){
   if(!curLib){ notify('ライブラリを選択してください'); return; }
   const g=$('themeGrid');
   g.innerHTML=Object.keys(THEMES).map(themeCardHtml).join('');
   g.querySelectorAll('.theme-card').forEach(c=>c.onclick=()=>selectTheme(c.dataset.key));
+  // カスタム欄の初期値
+  const isCustom=curLib.theme==='custom'&&curLib.themeCustom;
+  const base=themeV(curLib.theme,curLib.themeCustom);
+  $('customAccent').value = isCustom?curLib.themeCustom.accent:(base['--accent']||'#7c6fff');
+  $('customBg').value     = isCustom?curLib.themeCustom.bg:(base['--bg']||'#101018');
+  $('customTheme').classList.toggle('active',!!isCustom);
+  $('customActiveTag').classList.toggle('hidden',!isCustom);
+  renderCustomPrev();
   show('themeModal');
+};
+$('customAccent').oninput=renderCustomPrev;
+$('customBg').oninput=renderCustomPrev;
+$('customApplyBtn').onclick=()=>{
+  const custom={accent:$('customAccent').value, bg:$('customBg').value};
+  applyTheme('custom',custom); updateThemeBtn('custom',custom); saveLibMeta({theme:'custom',themeCustom:custom});
+  $('themeGrid').querySelectorAll('.theme-card').forEach(c=>{ c.classList.remove('sel'); const ex=c.querySelector('.chk'); if(ex)ex.remove(); });
+  $('customTheme').classList.add('active'); $('customActiveTag').classList.remove('hidden');
+  notify('カスタムテーマを適用しました');
 };
 function selectTheme(k){
   k=themeKey(k);
   applyTheme(k); updateThemeBtn(k); saveLibMeta({theme:k});
+  $('customTheme').classList.remove('active'); $('customActiveTag').classList.add('hidden');
   const g=$('themeGrid');
   g.querySelectorAll('.theme-card').forEach(c=>{
     const on=c.dataset.key===k; c.classList.toggle('sel',on);
@@ -943,7 +1001,7 @@ window.doPublish=async function(){
     const pwHash=await sha256(pw);
     // ライブラリはメモリ(onSnapshotで取得済み)を使用。getDocsのサーバー取得でハングしないように。
     const libs=(libraries||[]).slice().sort((a,b)=>(a.order||0)-(b.order||0))
-      .map(l=>({id:l.id,name:l.name||'',cols:l.cols||3,aspect:l.aspect||'16/9',gap:l.gap!=null?l.gap:12,theme:l.theme||'purple',items:l.items||[]}));
+      .map(l=>({id:l.id,name:l.name||'',cols:l.cols||3,aspect:l.aspect||'16/9',gap:l.gap!=null?l.gap:12,theme:l.theme||'purple',themeCustom:l.themeCustom||null,items:l.items||[]}));
     await withTO(setDoc(doc(db,C_PUB,token),{wsId:currentWsId,wsName:currentWsName||'',pwHash,libraries:libs,updatedAt:Date.now()}),9000,'setDoc');
     await withTO(updateDoc(doc(db,C_WS,currentWsId),{viewToken:token,viewPassword:pw}),9000,'updateDoc');
     curViewToken=token;
@@ -995,14 +1053,14 @@ function openViewer(){
   $('viewerTitle').textContent='📚 '+(viewData.wsName||'ライブラリ');
   libraries=(viewData.libraries||[]);
   curLib=libraries[0]||null;
-  applyTheme(curLib&&curLib.theme);
+  applyTheme(curLib&&curLib.theme, curLib&&curLib.themeCustom);
   // サイドバー（読み取り専用）
   $('libCount').textContent=libraries.length+'件';
   const el=$('libList'); el.innerHTML='';
   libraries.forEach(l=>{
     const it=document.createElement('div'); it.className='lib-item'+(curLib&&curLib.id===l.id?' active':'');
     it.innerHTML=`<span class="lib-item-name">${esc(l.name)}</span>`;
-    it.onclick=()=>{ closeRightPanel(); curLib=l; applyTheme(l.theme); document.querySelectorAll('#libList .lib-item').forEach(x=>x.classList.remove('active')); it.classList.add('active'); renderViewerGrid(); };
+    it.onclick=()=>{ closeRightPanel(); curLib=l; applyTheme(l.theme,l.themeCustom); document.querySelectorAll('#libList .lib-item').forEach(x=>x.classList.remove('active')); it.classList.add('active'); renderViewerGrid(); };
     el.appendChild(it);
   });
   renderViewerGrid();
