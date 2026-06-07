@@ -3087,7 +3087,10 @@ async function loadFolderHandle(dirHandle, showList){
   localFileHandles={};
   await scanDirInto(dirHandle,'',rootFiles,subfolders,localFileHandles);
   window._localScan={rootFiles,subfolders};
-  renderGrid();
+  // スキャン完了後はサイドバーのフォルダ一覧も再描画する（存在判定が確定するため）。
+  // renderGridだけだとフォルダ一覧が「localFileHandlesが空のまま描画された状態」で残り、
+  // ローカルフォルダ内に動画があってもフォルダが表示されないことがある。
+  renderAll();
   if(showList){
     const list=document.getElementById('localFileList');
     const total=rootFiles.length+Object.values(subfolders).reduce((a,b)=>a+b.length,0);
@@ -3209,8 +3212,15 @@ function maybeShowFolderConnectPrompt(){
   setTimeout(()=>{n.style.pointerEvents='none'},12000);
 }
 async function dedupLocalVideos(){
+  // 最新のFirestore状態で重複判定する（onSnapshot未反映の古いvideosだと取りこぼすため）
+  let list;
+  try{
+    const fs=await getDocs(query(collection(db,C_WS,currentWsId,'videos'),orderBy('createdAt','desc')));
+    list=fs.docs.map(d=>({id:d.id,...d.data()}));
+  }catch(e){ list=videos.slice(); }
   const seen=new Set();const dups=[];
-  videos.filter(v=>v.platform==='local').forEach(v=>{ if(seen.has(v.url))dups.push(v.id); else seen.set(v.url); });
+  // createdAt降順で走査し、同一URLは最新1件を残して古い重複を削除
+  list.filter(v=>v.platform==='local').forEach(v=>{ if(seen.has(v.url))dups.push(v.id); else seen.add(v.url); });
   for(const id of dups){ try{await deleteDoc(doc(db,C_WS,currentWsId,'videos',id));}catch(e){} }
   return dups.length;
 }
