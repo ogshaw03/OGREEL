@@ -352,6 +352,8 @@ function notify(m){ const n=$('notif'); n.textContent=m; n.style.display='block'
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 window.closeModal=id=>hide(id);
+const APP_BUILD='build-0607c';   // 最新版を読めているか確認用（ヘッダーに表示）
+try{ const _vl=$('verLabel'); if(_vl)_vl.textContent=APP_BUILD; }catch(e){}
 async function sha256(s){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 
 // ===== メディア判定 / 埋め込み =====
