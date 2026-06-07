@@ -224,6 +224,15 @@ body.titles-shown .cell-title-ov{opacity:1}
           <option value="16/9">16:9</option><option value="1/1">正方形</option><option value="4/3">4:3</option><option value="3/4">縦長</option>
         </select></div>
         <div class="grp">余白 <input type="range" id="gapSel" min="0" max="28" value="12" style="width:90px"></div>
+        <div class="grp">色 <select id="themeSel">
+          <option value="purple">パープル</option>
+          <option value="blue">ブルー</option>
+          <option value="green">グリーン</option>
+          <option value="coral">コーラル</option>
+          <option value="amber">アンバー</option>
+          <option value="mono">モノクロ</option>
+          <option value="light">ライト</option>
+        </select></div>
         <button class="btn btn-ghost btn-sm js-autoplay" onclick="toggleAutoplay()" title="自動再生の切り替え" style="gap:5px"><span class="ap-icon">▶</span><span class="ap-label">自動再生 ON</span></button>
         <button class="btn btn-ghost btn-sm js-titles" onclick="toggleTitles()" title="タイル上のタイトル表示/非表示" style="gap:5px"><span>🏷️</span><span class="tt-label">タイトルOFF</span></button>
         <button class="btn btn-ghost btn-sm" id="addMediaBtn">＋ メディア</button>
@@ -390,8 +399,24 @@ function notify(m){ const n=$('notif'); n.textContent=m; n.style.display='block'
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 window.closeModal=id=>hide(id);
-const APP_BUILD='build-0607h';   // 最新版を読めているか確認用（ヘッダーに表示）
+const APP_BUILD='build-0607i';   // 最新版を読めているか確認用（ヘッダーに表示）
 try{ const _vl=$('verLabel'); if(_vl)_vl.textContent=APP_BUILD; }catch(e){}
+
+// ===== テーマカラー（ライブラリごと・アクセント＋背景） =====
+const THEMES={
+  purple:{label:'パープル', v:{'--bg':'#0d0d0f','--bg2':'#141416','--bg3':'#1c1c1f','--bg4':'#232327','--border':'#2a2a2f','--border2':'#3a3a42','--text':'#e8e8ec','--text2':'#9a9aaa','--text3':'#5a5a6a','--accent':'#7c6fff','--accent2':'#5a4fff'}},
+  blue:{label:'ブルー', v:{'--bg':'#0b0e13','--bg2':'#11151c','--bg3':'#19202a','--bg4':'#212a36','--border':'#27313f','--border2':'#374556','--text':'#e8ecf2','--text2':'#93a1b5','--text3':'#566275','--accent':'#4d9fff','--accent2':'#2f7fe6'}},
+  green:{label:'グリーン', v:{'--bg':'#0a0f0c','--bg2':'#101713','--bg3':'#16201b','--bg4':'#1d2a23','--border':'#243029','--border2':'#33473b','--text':'#e6efe9','--text2':'#93b0a2','--text3':'#566b60','--accent':'#2fdca0','--accent2':'#1fb888'}},
+  coral:{label:'コーラル', v:{'--bg':'#120c0d','--bg2':'#191112','--bg3':'#221719','--bg4':'#2c1e20','--border':'#352426','--border2':'#4a3335','--text':'#f2e8e9','--text2':'#b59a9c','--text3':'#6e5658','--accent':'#ff6b6b','--accent2':'#e84d4d'}},
+  amber:{label:'アンバー', v:{'--bg':'#100e0a','--bg2':'#171410','--bg3':'#201b14','--bg4':'#2a231a','--border':'#332b20','--border2':'#473c2c','--text':'#f1ece2','--text2':'#b5a890','--text3':'#6e6450','--accent':'#ffb454','--accent2':'#f59e2e'}},
+  mono:{label:'モノクロ', v:{'--bg':'#0d0d0f','--bg2':'#141416','--bg3':'#1c1c1f','--bg4':'#232327','--border':'#2a2a2f','--border2':'#3a3a42','--text':'#eaeaee','--text2':'#9a9aa2','--text3':'#5a5a62','--accent':'#aab0c0','--accent2':'#8b91a3'}},
+  light:{label:'ライト', v:{'--bg':'#f4f4f7','--bg2':'#ffffff','--bg3':'#ececef','--bg4':'#e2e2e8','--border':'#d8d8de','--border2':'#c2c2cc','--text':'#1a1a1f','--text2':'#5a5a6a','--text3':'#9a9aaa','--accent':'#7c6fff','--accent2':'#5a4fff'}}
+};
+function applyTheme(key){
+  const t=THEMES[key]||THEMES.purple;
+  const b=document.body;
+  Object.entries(t.v).forEach(([k,val])=>b.style.setProperty(k,val));
+}
 async function sha256(s){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 
 // ===== メディア判定 / 埋め込み =====
@@ -473,7 +498,7 @@ onAuthStateChanged(auth, async user=>{
   if(viewerMode) return;          // 観覧モードは認証に依存しない
   currentUser=user;
   if(!user){
-    currentRole=false;
+    currentRole=false; applyTheme('purple');
     hide('loading'); hide('wsScreen'); hide('app'); hide('deniedScreen'); show('loginScreen');
     return;
   }
@@ -555,6 +580,7 @@ $('backWsBtn').onclick=()=>{ closeRightPanel(); if(unsubLibs){unsubLibs();unsubL
 
 // ===== ワークスペース =====
 async function openWsScreen(){
+  applyTheme('purple');   // WS選択画面は既定テーマに戻す
   hide('app'); show('wsScreen');
   const el=$('wsList'); el.innerHTML='<div class="muted">読み込み中...</div>';
   let list=[];
@@ -638,7 +664,7 @@ $('libSaveBtn').onclick=async()=>{
   try{
     if(libModalMode==='create'){
       if(libraries.length>=LIB_LIMIT){notify(`ライブラリは1ワークスペース${LIB_LIMIT}個までです`);return;}
-      const ref=await addDoc(collection(db,C_WS,currentWsId,'libraries'),{name,order:libraries.length,cols:3,aspect:'16/9',gap:12,items:[],createdAt:Date.now(),updatedAt:Date.now(),ownerUid:currentUser.uid});
+      const ref=await addDoc(collection(db,C_WS,currentWsId,'libraries'),{name,order:libraries.length,cols:3,aspect:'16/9',gap:12,theme:'purple',items:[],createdAt:Date.now(),updatedAt:Date.now(),ownerUid:currentUser.uid});
       closeModal('libModal'); selectLib(ref.id);
     }else{
       await updateDoc(doc(db,C_WS,currentWsId,'libraries',libModalId),{name});
@@ -653,11 +679,13 @@ function selectLib(id){ closeRightPanel(); curLib=libraries.find(l=>l.id===id)||
 // ===== エディタ =====
 function renderEditor(){
   const grid=$('libGrid');
-  if(!curLib){ $('curLibName').textContent='—'; $('itemCount').textContent='0/'+ITEM_LIMIT; grid.innerHTML='<div class="empty">左の「＋ 新しいライブラリ」から作成してください</div>'; return; }
+  if(!curLib){ $('curLibName').textContent='—'; $('itemCount').textContent='0/'+ITEM_LIMIT; applyTheme('purple'); grid.innerHTML='<div class="empty">左の「＋ 新しいライブラリ」から作成してください</div>'; return; }
   $('curLibName').textContent=curLib.name;
   $('colsSel').value=String(curLib.cols||3);
   $('aspectSel').value=curLib.aspect||'16/9';
   $('gapSel').value=String(curLib.gap!=null?curLib.gap:12);
+  $('themeSel').value=curLib.theme||'purple';
+  applyTheme(curLib.theme);
   applyGridStyle(grid);
   const items=curLib.items||[];
   $('itemCount').textContent=items.filter(x=>x.type==='media').length+'/'+ITEM_LIMIT;
@@ -700,6 +728,7 @@ $('colsSel').onchange=()=>saveLibMeta({cols:parseInt($('colsSel').value)});
 $('aspectSel').onchange=()=>saveLibMeta({aspect:$('aspectSel').value});
 $('gapSel').oninput=()=>{ if(curLib){curLib.gap=parseInt($('gapSel').value); applyGridStyle($('libGrid'));} };
 $('gapSel').onchange=()=>saveLibMeta({gap:parseInt($('gapSel').value)});
+$('themeSel').onchange=()=>{ applyTheme($('themeSel').value); saveLibMeta({theme:$('themeSel').value}); };
 async function saveLibMeta(patch){
   if(!curLib)return; Object.assign(curLib,patch); applyGridStyle($('libGrid'));
   try{await updateDoc(doc(db,C_WS,currentWsId,'libraries',curLib.id),{...patch,updatedAt:Date.now()});}catch(e){notify('保存失敗');}
@@ -853,7 +882,7 @@ window.doPublish=async function(){
     const pwHash=await sha256(pw);
     // ライブラリはメモリ(onSnapshotで取得済み)を使用。getDocsのサーバー取得でハングしないように。
     const libs=(libraries||[]).slice().sort((a,b)=>(a.order||0)-(b.order||0))
-      .map(l=>({id:l.id,name:l.name||'',cols:l.cols||3,aspect:l.aspect||'16/9',gap:l.gap!=null?l.gap:12,items:l.items||[]}));
+      .map(l=>({id:l.id,name:l.name||'',cols:l.cols||3,aspect:l.aspect||'16/9',gap:l.gap!=null?l.gap:12,theme:l.theme||'purple',items:l.items||[]}));
     await withTO(setDoc(doc(db,C_PUB,token),{wsId:currentWsId,wsName:currentWsName||'',pwHash,libraries:libs,updatedAt:Date.now()}),9000,'setDoc');
     await withTO(updateDoc(doc(db,C_WS,currentWsId),{viewToken:token,viewPassword:pw}),9000,'updateDoc');
     curViewToken=token;
@@ -905,13 +934,14 @@ function openViewer(){
   $('viewerTitle').textContent='📚 '+(viewData.wsName||'ライブラリ');
   libraries=(viewData.libraries||[]);
   curLib=libraries[0]||null;
+  applyTheme(curLib&&curLib.theme);
   // サイドバー（読み取り専用）
   $('libCount').textContent=libraries.length+'件';
   const el=$('libList'); el.innerHTML='';
   libraries.forEach(l=>{
     const it=document.createElement('div'); it.className='lib-item'+(curLib&&curLib.id===l.id?' active':'');
     it.innerHTML=`<span class="lib-item-name">${esc(l.name)}</span>`;
-    it.onclick=()=>{ closeRightPanel(); curLib=l; document.querySelectorAll('#libList .lib-item').forEach(x=>x.classList.remove('active')); it.classList.add('active'); renderViewerGrid(); };
+    it.onclick=()=>{ closeRightPanel(); curLib=l; applyTheme(l.theme); document.querySelectorAll('#libList .lib-item').forEach(x=>x.classList.remove('active')); it.classList.add('active'); renderViewerGrid(); };
     el.appendChild(it);
   });
   renderViewerGrid();
