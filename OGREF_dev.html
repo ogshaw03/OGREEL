@@ -174,7 +174,7 @@ body.sb-collapsed .sidebar-toggle{left:66px}
 .right-panel-note{background:var(--bg3);border-radius:var(--radius2);padding:8px 10px;font-size:12px;color:var(--text2);margin-bottom:8px}
 .right-panel-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
 .right-panel-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.video-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(var(--card-min,280px),1fr))}
+.video-grid{display:grid;gap:12px;grid-template-columns:repeat(var(--cols,4),1fr)}
 .video-grid.list-view{grid-template-columns:1fr}
 
 /* CARDS */
@@ -948,14 +948,15 @@ const ICON_HOME='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="current
 
 let videos=[], folders=[];
 let autoplayEnabled=localStorage.getItem('ogref_dev_autoplay')!=='false';
-// タイルサイズ（大きいほど画面内の枚数＝同時再生数が減り負荷が下がる）
+// タイルサイズ＝列数（個人設定: localStorageのみ。他ユーザーには影響しない）
+// 小=5列 / 中=4列 / 大=3列。列が少ない=タイル大=画面内の枚数(同時再生数)が減り負荷減
 let gridSize=localStorage.getItem('ogref_dev_gridsize')||'medium';
-const GRID_MIN={small:'240px',medium:'300px',large:'420px'};
+const GRID_COLS={small:5,medium:4,large:3};
 function applyGridSize(){
-  document.documentElement.style.setProperty('--card-min', GRID_MIN[gridSize]||GRID_MIN.medium);
+  document.documentElement.style.setProperty('--cols', GRID_COLS[gridSize]||GRID_COLS.medium);
   document.querySelectorAll('.size-btn').forEach(b=>b.classList.toggle('active', b.dataset.size===gridSize));
 }
-window.setGridSize=function(s){ if(!GRID_MIN[s])return; gridSize=s; localStorage.setItem('ogref_dev_gridsize',s); applyGridSize(); };
+window.setGridSize=function(s){ if(!GRID_COLS[s])return; gridSize=s; localStorage.setItem('ogref_dev_gridsize',s); applyGridSize(); };
 let localVideoSnapshot=null;
 let localSnapshotWsId=null;
 let pendingAutoSync=false;
