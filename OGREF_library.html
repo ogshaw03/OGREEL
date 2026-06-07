@@ -72,7 +72,10 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 .lib-grid{display:grid;gap:var(--gap,12px);grid-template-columns:repeat(var(--cols,3),1fr);align-content:start}
 .cell{position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
 .cell.dragging{opacity:.4}
-.cell.drag-over{outline:2px dashed var(--accent);outline-offset:-2px}
+.cell.insert-before{box-shadow:-4px 0 0 0 var(--accent)}
+.cell.insert-after{box-shadow:4px 0 0 0 var(--accent)}
+.cell.row.insert-before{box-shadow:0 -4px 0 0 var(--accent)}
+.cell.row.insert-after{box-shadow:0 4px 0 0 var(--accent)}
 .cell-media{position:relative;width:100%;aspect-ratio:var(--aspect,16/9);background:#000}
 .cell-media iframe,.cell-media img,.cell-media video{position:absolute;inset:0;width:100%;height:100%;border:none;object-fit:cover}
 .cell-cap{padding:6px 9px;font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -190,6 +193,15 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
         <div class="lib-grid" id="libGrid"></div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- LIBRARY NAME MODAL -->
+<div class="modal-bg hidden" id="libModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-head"><div class="modal-title" id="libModalTitle">新しいライブラリ</div><button class="btn-sm" onclick="closeModal('libModal')">✕</button></div>
+    <div class="modal-body"><div class="frow"><label>ライブラリ名</label><input id="libNameInput" placeholder="ライブラリ名" maxlength="60"></div></div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('libModal')">キャンセル</button><button class="btn btn-primary" id="libSaveBtn">作成</button></div>
   </div>
 </div>
 
@@ -375,15 +387,33 @@ function renderLibList(){
   });
   $('newLibBtn').style.display=(libraries.length>=LIB_LIMIT)?'none':'';
 }
-$('newLibBtn').onclick=async()=>{
+let libModalMode='create', libModalId=null;
+function openLibModal(mode,lib){
+  libModalMode=mode; libModalId=lib?lib.id:null;
+  $('libModalTitle').textContent = mode==='create'?'新しいライブラリ':'ライブラリ名を変更';
+  $('libSaveBtn').textContent = mode==='create'?'作成':'保存';
+  $('libNameInput').value = lib?lib.name:'';
+  show('libModal'); setTimeout(()=>$('libNameInput').focus(),50);
+}
+$('newLibBtn').onclick=()=>{
   if(libraries.length>=LIB_LIMIT){notify(`ライブラリは1ワークスペース${LIB_LIMIT}個までです`);return;}
-  const name=prompt('ライブラリ名'); if(!name||!name.trim())return;
-  try{
-    const ref=await addDoc(collection(db,C_WS,currentWsId,'libraries'),{name:name.trim(),order:libraries.length,cols:3,aspect:'16/9',gap:12,items:[],createdAt:Date.now(),updatedAt:Date.now(),ownerUid:currentUser.uid});
-    selectLib(ref.id);
-  }catch(e){notify('作成失敗: '+e.message);}
+  openLibModal('create');
 };
-async function renameLib(l){ const name=prompt('ライブラリ名',l.name); if(!name||!name.trim())return; try{await updateDoc(doc(db,C_WS,currentWsId,'libraries',l.id),{name:name.trim()});}catch(e){notify('失敗');} }
+function renameLib(l){ openLibModal('rename',l); }
+$('libSaveBtn').onclick=async()=>{
+  const name=$('libNameInput').value.trim(); if(!name){notify('ライブラリ名を入力してください');return;}
+  try{
+    if(libModalMode==='create'){
+      if(libraries.length>=LIB_LIMIT){notify(`ライブラリは1ワークスペース${LIB_LIMIT}個までです`);return;}
+      const ref=await addDoc(collection(db,C_WS,currentWsId,'libraries'),{name,order:libraries.length,cols:3,aspect:'16/9',gap:12,items:[],createdAt:Date.now(),updatedAt:Date.now(),ownerUid:currentUser.uid});
+      closeModal('libModal'); selectLib(ref.id);
+    }else{
+      await updateDoc(doc(db,C_WS,currentWsId,'libraries',libModalId),{name});
+      closeModal('libModal');
+    }
+  }catch(e){notify('保存失敗: '+e.message);}
+};
+$('libNameInput').addEventListener('keydown',e=>{ if(e.key==='Enter')$('libSaveBtn').click(); });
 async function deleteLib(l){ if(!confirm(`「${l.name}」を削除しますか？`))return; try{await deleteDoc(doc(db,C_WS,currentWsId,'libraries',l.id)); if(curLib&&curLib.id===l.id)curLib=null;}catch(e){notify('失敗');} }
 function selectLib(id){ curLib=libraries.find(l=>l.id===id)||null; renderLibList(); renderEditor(); }
 
@@ -464,15 +494,38 @@ $('textSaveBtn').onclick=()=>{
 // 追加: セパレーター
 $('addSepBtn').onclick=()=>{ if(!curLib){notify('先にライブラリを選択してください');return;} curLib.items=curLib.items||[]; curLib.items.push({id:uid(),type:'separator'}); renderEditor(); saveItems(); };
 
-// ドラッグ並べ替え
+// ドラッグ並べ替え（要素の「間」に差し込み可能）
 let dragIdx=-1;
+function clearDragMarks(){ document.querySelectorAll('.cell.insert-before,.cell.insert-after').forEach(x=>x.classList.remove('insert-before','insert-after')); }
+function insertAfterSide(cell,e){
+  const r=cell.getBoundingClientRect();
+  // 全幅要素(テキスト/区切り線)は上下、メディアタイルは左右で前後判定
+  return cell.classList.contains('row') ? (e.clientY > r.top + r.height/2) : (e.clientX > r.left + r.width/2);
+}
 function setupDrag(cell,idx){
   cell.setAttribute('draggable','true');
-  cell.addEventListener('dragstart',e=>{ dragIdx=idx; cell.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
-  cell.addEventListener('dragend',()=>{ cell.classList.remove('dragging'); document.querySelectorAll('.cell.drag-over').forEach(x=>x.classList.remove('drag-over')); });
-  cell.addEventListener('dragover',e=>{ e.preventDefault(); cell.classList.add('drag-over'); });
-  cell.addEventListener('dragleave',()=>cell.classList.remove('drag-over'));
-  cell.addEventListener('drop',e=>{ e.preventDefault(); cell.classList.remove('drag-over'); if(dragIdx<0||dragIdx===idx)return; const arr=curLib.items; const [m]=arr.splice(dragIdx,1); arr.splice(idx,0,m); dragIdx=-1; renderEditor(); saveItems(); });
+  cell.addEventListener('dragstart',e=>{ dragIdx=idx; cell.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',String(idx));}catch(_){} });
+  cell.addEventListener('dragend',()=>{ cell.classList.remove('dragging'); clearDragMarks(); dragIdx=-1; });
+  cell.addEventListener('dragover',e=>{
+    e.preventDefault(); e.dataTransfer.dropEffect='move';
+    const after=insertAfterSide(cell,e);
+    clearDragMarks();
+    cell.classList.add(after?'insert-after':'insert-before');
+  });
+  cell.addEventListener('dragleave',()=>cell.classList.remove('insert-before','insert-after'));
+  cell.addEventListener('drop',e=>{
+    e.preventDefault();
+    const after=insertAfterSide(cell,e);
+    clearDragMarks();
+    if(dragIdx<0)return;
+    let insertAt=idx+(after?1:0);
+    const arr=curLib.items;
+    const [m]=arr.splice(dragIdx,1);
+    if(dragIdx<insertAt)insertAt--;            // 下方向移動時のインデックスずれを補正
+    insertAt=Math.max(0,Math.min(insertAt,arr.length));
+    arr.splice(insertAt,0,m);
+    dragIdx=-1; renderEditor(); saveItems();
+  });
 }
 
 // ===== 公開（観覧URL）=====
