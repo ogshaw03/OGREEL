@@ -281,6 +281,10 @@ body.titles-shown .vcard-overlay{opacity:1}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 /* ===== 並べて再生（比較） ===== */
 .vcard.cmp-selected{outline:2px solid var(--accent);outline-offset:-2px}
+.vcard.move-selected{outline:2px solid var(--amber);outline-offset:-2px}
+/* 編集権限が無いユーザーには編集系の操作を隠す */
+body.no-perm .vcard-act-btn.gated{display:none!important}
+body.no-perm .m-menu-item.gated{display:none!important}
 .cmp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:9000;display:flex;align-items:center;justify-content:center;padding:24px}
 .cmp-modal{background:#000;border:1px solid var(--border2);border-radius:14px;overflow:hidden;width:min(1100px,95vw);height:min(70vh,760px);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.6)}
 .cmp-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--bg2);border-bottom:1px solid var(--border)}
@@ -294,6 +298,7 @@ body.titles-shown .vcard-overlay{opacity:1}
 .cmp-player video,.cmp-player iframe{position:absolute;inset:0;width:100%;height:100%;border:none}
 .cmp-player video{object-fit:contain;background:#000}
 .cmp-tray{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:8900;background:var(--bg2);border:1px solid var(--border2);border-radius:999px;padding:8px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 30px rgba(0,0,0,.5);font-size:13px}
+.move-tray{bottom:74px}
 @media(max-width:680px){.cmp-grid{grid-template-columns:1fr;grid-template-rows:1fr 1fr}}
 
 /* ===================== モバイル（レスポンシブ） ===================== */
@@ -422,6 +427,7 @@ body.titles-shown .vcard-overlay{opacity:1}
   .fb-board{border-left:none;border-top:1px solid var(--border);padding-left:0;padding-top:12px;max-height:40vh}
 
   .cmp-tray{bottom:auto;top:58px;width:max-content;max-width:92vw}
+  .move-tray{top:106px;bottom:auto}
 
   /* ログイン / ワークスペース選択 / 拒否画面の表示中は下部バー等を隠す */
   body:has(#loginScreen:not(.hidden), #wsScreen:not(.hidden), #deniedScreen:not(.hidden)) #mBotbar,
@@ -689,11 +695,11 @@ body.titles-shown .vcard-overlay{opacity:1}
 <!-- MOBILE タイルアクションシート（⋯） -->
 <div id="mActSheet">
   <div class="m-menu-handle"></div>
-  <div class="m-menu-item" id="mActFav" onclick="cardAction('fav')">☆ お気に入りに追加</div>
-  <div class="m-menu-item" onclick="cardAction('edit')">✏️ 編集</div>
+  <div class="m-menu-item gated" id="mActFav" onclick="cardAction('fav')">☆ お気に入りに追加</div>
+  <div class="m-menu-item gated" onclick="cardAction('edit')">✏️ 編集</div>
   <div class="m-menu-item" onclick="cardAction('compare')">⊞ 並べて再生に追加</div>
-  <div class="m-menu-item" onclick="cardAction('move')">⇄ 別ワークスペースへ移動/コピー</div>
-  <div class="m-menu-item" style="color:var(--red)" onclick="cardAction('delete')">🗑️ 削除</div>
+  <div class="m-menu-item gated" onclick="cardAction('move')">⇄ 別WSへコピー/移動に追加（複数選択可）</div>
+  <div class="m-menu-item gated" style="color:var(--red)" onclick="cardAction('delete')">🗑️ 削除</div>
 </div>
 
 <!-- ADD/EDIT MODAL -->
@@ -814,10 +820,11 @@ body.titles-shown .vcard-overlay{opacity:1}
         相手は「招待コードで参加」から入力することで同じワークスペースにアクセスできます。
       </div>
       <div class="form-row" id="sharePermSection" style="display:none;margin-top:16px;border-top:1px solid var(--border2);padding-top:14px">
-        <label class="form-label">動画の追加権限（オーナー設定）</label>
-        <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px"><input type="radio" name="addPerm" value="all" onchange="setAddPermission('all')"> 参加者全員が追加可</label>
-        <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px"><input type="radio" name="addPerm" value="allowed" onchange="setAddPermission('allowed')"> 許可されたユーザーのみ追加可</label>
-        <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px"><input type="radio" name="addPerm" value="owner" onchange="setAddPermission('owner')"> オーナーのみ追加可</label>
+        <label class="form-label">動画の編集権限（オーナー設定）</label>
+        <div style="font-size:11px;color:var(--text3);line-height:1.6;margin:-2px 0 6px">この権限で「追加・編集・削除・WS間のコピー/移動」が可能になります。</div>
+        <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px"><input type="radio" name="addPerm" value="all" onchange="setAddPermission('all')"> 参加者全員が編集可</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px"><input type="radio" name="addPerm" value="allowed" onchange="setAddPermission('allowed')"> 許可されたユーザーのみ編集可</label>
+        <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px"><input type="radio" name="addPerm" value="owner" onchange="setAddPermission('owner')"> オーナーのみ編集可</label>
         <div style="font-size:11px;color:var(--text3);line-height:1.6;margin-top:4px">「許可されたユーザーのみ」の許可設定は「👥 参加者」画面から行えます。</div>
       </div>
     </div>
@@ -915,7 +922,7 @@ let autoplayEnabled=localStorage.getItem('ogref_dev_autoplay')!=='false';
 let localVideoSnapshot=null;
 let localSnapshotWsId=null;
 let pendingAutoSync=false;
-let state={filter:'all',folder:null,tag:null,view:'grid',editId:null,editFolderId:null,currentTags:[],selectedColor:'purple',currentPlayId:null,folderPath:[],folderIds:null,folderSel:null,expandedFolders:new Set(),compareIds:[]};
+let state={filter:'all',folder:null,tag:null,view:'grid',editId:null,editFolderId:null,currentTags:[],selectedColor:'purple',currentPlayId:null,folderPath:[],folderIds:null,folderSel:null,expandedFolders:new Set(),compareIds:[],moveIds:[]};
 let currentUser=null;
 let currentRole=null;            // 'admin' | 'member' | null
 let unsubMaintenance=null;       // メンテナンス監視の解除関数
@@ -1545,7 +1552,7 @@ function enterWorkspace(id, name, code, color){
   {const _n=document.getElementById('wsSwitcherName');if(_n)_n.textContent=name;}
   {const _d=document.getElementById('wsSwitcherDot');if(_d)_d.style.background=color||'#7c6fff';}
   initAutoplayBtn();
-  localVideoSnapshot=null;localSnapshotWsId=null;pendingAutoSync=true;_wsFolderReady=false;cachedFolderName='';wsAddPermission='all';myCanAdd=false;renderGrid._sig=null;
+  localVideoSnapshot=null;localSnapshotWsId=null;pendingAutoSync=true;_wsFolderReady=false;cachedFolderName='';wsAddPermission='all';myCanAdd=false;renderGrid._sig=null;state.moveIds=[];state.compareIds=[];
   startListeners();
   recordMembership();
   loadBasePath();
@@ -1620,11 +1627,14 @@ function canAddVideo(){
   return true;
 }
 function updateAddButtonState(){
-  const btn=document.getElementById('addBtn');
-  if(!btn)return;
   const ok=canAddVideo();
-  btn.style.display=ok?'':'none';
-  btn.title=ok?'':'このワークスペースでは追加権限がありません';
+  // 権限が無い場合は編集系UI(追加/編集/削除/お気に入り/コピー移動)を一括で隠す
+  document.body.classList.toggle('no-perm', !ok);
+  const btn=document.getElementById('addBtn');
+  if(btn){
+    btn.style.display=ok?'':'none';
+    btn.title=ok?'':'このワークスペースでは編集権限がありません';
+  }
 }
 function syncSharePermUI(){
   const sec=document.getElementById('sharePermSection');
@@ -1637,7 +1647,7 @@ window.setAddPermission=async function(mode){
   if(!['all','allowed','owner'].includes(mode))return;
   try{
     await updateDoc(doc(db,C_WS,currentWsId),{addPermission:mode});
-    notify('追加権限を更新しました');
+    notify('編集権限を更新しました');
   }catch(e){notify('失敗: '+e.message)}
 }
 // 参加者のワークスペース退出（リストからも削除）
@@ -1660,7 +1670,7 @@ window.toggleMemberCanAdd=async function(uid,checked){
   if(!isWsCreator){notify('オーナーのみ設定できます');return}
   try{
     await setDoc(doc(db,C_WS,currentWsId,'members',uid),{canAdd:checked},{merge:true});
-    notify(checked?'追加を許可しました':'追加許可を解除しました');
+    notify(checked?'編集を許可しました':'編集許可を解除しました');
   }catch(e){notify('失敗: '+e.message)}
 }
 // 入室時に参加者として記録（C_WS/{wsId}/members/{uid}）
@@ -1709,12 +1719,12 @@ window.openMembersModal=async function(){
       // オーナーには各参加者の「追加許可」トグルを表示（'allowed'モードで有効）
       if(isWsCreator&&!isCreator){
         const lbl=document.createElement('label');
-        lbl.title='動画の追加を許可（「許可されたユーザーのみ」モードで有効）';
+        lbl.title='動画の編集（追加・編集・削除・コピー/移動）を許可（「許可されたユーザーのみ」モードで有効）';
         lbl.style.cssText='display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);cursor:pointer;flex-shrink:0';
         const cb=document.createElement('input');
         cb.type='checkbox'; cb.checked=!!m.canAdd;
         cb.onchange=()=>window.toggleMemberCanAdd(m.uid,cb.checked);
-        lbl.appendChild(cb); lbl.appendChild(document.createTextNode('追加許可'));
+        lbl.appendChild(cb); lbl.appendChild(document.createTextNode('編集許可'));
         row.appendChild(lbl);
       }
       list.appendChild(row);
@@ -2006,11 +2016,13 @@ window.saveVideo=async function(){
 }
 
 window.deleteVideo=async function(id){
+  if(!canAddVideo()){notify('編集権限がありません（オーナー設定）');return}
   if(!confirm('削除しますか？'))return;
   try{await deleteDoc(doc(db,C_WS,currentWsId,'videos',id));notify('削除しました')}
   catch(e){notify('削除失敗')}
 }
 window.toggleFav=async function(id){
+  if(!canAddVideo()){notify('編集権限がありません（オーナー設定）');return}
   const v=videos.find(x=>x.id===id);if(!v)return;
   try{
     await updateDoc(doc(db,C_WS,currentWsId,'videos',id),{fav:!v.fav});
@@ -2189,6 +2201,7 @@ function renderFolderNodes(pathArr, depth, fl){
         e.preventDefault();el.classList.remove('drag-over');
         const videoId=e.dataTransfer.getData('videoId');
         if(!videoId)return;
+        if(!canAddVideo()){notify('編集権限がありません（オーナー設定）');return}
         try{await updateDoc(doc(db,C_WS,currentWsId,'videos',videoId),{folder:item.exact});notify(`「${item.name}」に移動しました`);}catch(err){notify('移動失敗: '+err.message)}
       });
     }
@@ -2373,6 +2386,7 @@ function makeCard(v){
     const card=document.createElement('div');
     card.className='vcard';
     if(state.compareIds&&state.compareIds.includes(v.id))card.classList.add('cmp-selected');
+    if(state.moveIds&&state.moveIds.includes(v.id))card.classList.add('move-selected');
     card.draggable=true;
     card.dataset.vid=v.id;
     card.addEventListener('dragstart',e=>{
@@ -2393,11 +2407,11 @@ function makeCard(v){
         <span class="vcard-badge ${platformClass(v.platform)}">${platformLabel(v.platform)}</span>
         <button class="m-card-menu" onclick="event.stopPropagation();openCardSheet('${v.id}')" title="操作">⋯</button>
         <div class="vcard-actions">
-          <button class="vcard-act-btn" onclick="event.stopPropagation();toggleFav('${v.id}')">${v.fav?'⭐':'☆'}</button>
-          <button class="vcard-act-btn" onclick="event.stopPropagation();openAddModal('${v.id}')">✏️</button>
-          <button class="vcard-act-btn" onclick="event.stopPropagation();deleteVideo('${v.id}')">🗑️</button>
+          <button class="vcard-act-btn gated" onclick="event.stopPropagation();toggleFav('${v.id}')">${v.fav?'⭐':'☆'}</button>
+          <button class="vcard-act-btn gated" onclick="event.stopPropagation();openAddModal('${v.id}')">✏️</button>
+          <button class="vcard-act-btn gated" onclick="event.stopPropagation();deleteVideo('${v.id}')">🗑️</button>
           <button class="vcard-act-btn" onclick="event.stopPropagation();compareSelect('${v.id}')" title="並べて再生に追加">⊞</button>
-          <button class="vcard-act-btn" onclick="event.stopPropagation();openMoveModal('${v.id}')" title="別のワークスペースへ移動/コピー">⇄</button>
+          <button class="vcard-act-btn gated" onclick="event.stopPropagation();moveSelect('${v.id}')" title="別のワークスペースへ移動/コピー（複数選択可）">⇄</button>
         </div>
         <div class="vcard-overlay">
           <div class="vcard-overlay-title">${v.title||'無題'}</div>
@@ -2588,9 +2602,30 @@ window.openCompare=function(){
 window.closeCompare=function(){ const ov=document.getElementById('compareModal'); if(ov)ov.remove(); };
 
 // ===== ワークスペース間の移動 / コピー（タグ引継ぎ・フォルダは引き継がない） =====
-window.openMoveModal=async function(id){
-  const v=videos.find(x=>x.id===id);
-  if(!v){ notify('動画が見つかりません'); return; }
+// ⇄ で選択トグル（複数選択）。選択トレイから別WSへコピー/移動する。
+window.moveSelect=function(id){
+  if(!canAddVideo()){notify('編集権限がありません（オーナー設定）');return}
+  if(!videos.find(x=>x.id===id)){notify('動画が見つかりません');return}
+  state.moveIds=state.moveIds||[];
+  const i=state.moveIds.indexOf(id);
+  if(i>=0)state.moveIds.splice(i,1); else state.moveIds.push(id);
+  updateMoveTray();
+};
+function updateMoveTray(){
+  document.querySelectorAll('.vcard').forEach(c=>{ c.classList.toggle('move-selected', (state.moveIds||[]).includes(c.dataset.vid)); });
+  let bar=document.getElementById('moveTray');
+  const n=(state.moveIds||[]).length;
+  if(n===0){ if(bar)bar.remove(); return; }
+  if(!bar){ bar=document.createElement('div'); bar.id='moveTray'; bar.className='cmp-tray move-tray'; document.body.appendChild(bar); }
+  bar.innerHTML=`<span>⇄ ${n}件選択中</span>`;
+  const goBtn=document.createElement('button'); goBtn.className='btn btn-primary'; goBtn.textContent='別WSへ'; goBtn.onclick=()=>openMoveModal();
+  const clearBtn=document.createElement('button'); clearBtn.className='btn btn-ghost'; clearBtn.textContent='クリア'; clearBtn.onclick=()=>{ state.moveIds=[]; updateMoveTray(); };
+  bar.appendChild(goBtn); bar.appendChild(clearBtn);
+}
+window.openMoveModal=async function(){
+  if(!canAddVideo()){notify('編集権限がありません（オーナー設定）');return}
+  const ids=(state.moveIds||[]).slice();
+  if(!ids.length){ notify('⇄ で動画を選択してください'); return; }
   let existing=document.getElementById('moveModal'); if(existing)existing.remove();
   const bg=document.createElement('div'); bg.id='moveModal';
   bg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:6000;display:flex;align-items:center;justify-content:center;padding:20px';
@@ -2601,7 +2636,7 @@ window.openMoveModal=async function(id){
         <button onclick="document.getElementById('moveModal').remove()" style="cursor:pointer;border:none;background:none;color:var(--text);font-size:18px;width:32px;height:32px;border-radius:6px">✕</button>
       </div>
       <div style="padding:20px">
-        <div style="font-size:13px;color:var(--text2);margin-bottom:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">対象: ${v.title||'無題'}</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:14px">対象: ${ids.length}件の動画</div>
         <label class="form-label" style="font-size:12px;color:var(--text3)">移動 / コピー先のワークスペース</label>
         <select id="moveTargetWs" class="form-input" style="width:100%;margin:6px 0 8px"><option value="">読み込み中...</option></select>
         <div style="font-size:11px;color:var(--text3);line-height:1.6;margin-bottom:16px">※ タグは引き継がれます。フォルダ分けは引き継がれません。</div>
@@ -2619,29 +2654,37 @@ window.openMoveModal=async function(id){
     if(!list.length){ sel.innerHTML='<option value="">他に参加中のワークスペースがありません</option>'; }
     else { sel.innerHTML=list.map(w=>`<option value="${w.id}">${w.name||w.id}</option>`).join(''); }
   }catch(e){ sel.innerHTML='<option value="">読み込み失敗</option>'; }
-  document.getElementById('moveCopyBtn').onclick=()=>doMoveCopy(id,false);
-  document.getElementById('moveMoveBtn').onclick=()=>doMoveCopy(id,true);
+  document.getElementById('moveCopyBtn').onclick=()=>doMoveCopy(false);
+  document.getElementById('moveMoveBtn').onclick=()=>doMoveCopy(true);
 };
-async function doMoveCopy(id,isMove){
+async function doMoveCopy(isMove){
+  if(!canAddVideo()){notify('編集権限がありません（オーナー設定）');return}
   const target=document.getElementById('moveTargetWs')?.value;
   if(!target){ notify('移動 / コピー先を選択してください'); return; }
-  const v=videos.find(x=>x.id===id);
-  if(!v){ notify('動画が見つかりません'); return; }
-  if(isMove && !confirm('この動画を選択したワークスペースへ移動します（元のワークスペースからは削除されます）。よろしいですか？'))return;
-  try{
-    const data={
-      url:v.url, vid:v.vid||null, platform:v.platform,
-      title:v.title||'', tags:Array.isArray(v.tags)?[...v.tags]:[],
-      folder:null, note:v.note||'', thumb:v.thumb||'',
-      startTime:v.startTime||0, endTime:v.endTime||0,
-      fav:false, createdAt:Date.now(),
-      addedBy:currentUser.uid, addedByName:currentUser.displayName||''
-    };
-    await addDoc(collection(db,C_WS,target,'videos'),data);
-    if(isMove){ await deleteDoc(doc(db,C_WS,currentWsId,'videos',id)); }
-    document.getElementById('moveModal')?.remove();
-    notify(isMove?'移動しました':'コピーしました');
-  }catch(e){ notify((isMove?'移動':'コピー')+'失敗: '+e.message); }
+  const ids=(state.moveIds||[]).slice();
+  if(!ids.length){ notify('対象がありません'); return; }
+  if(isMove && !confirm(`選択した ${ids.length}件 を別のワークスペースへ移動します（元のワークスペースからは削除されます）。よろしいですか？`))return;
+  let ok=0;
+  for(const id of ids){
+    const v=videos.find(x=>x.id===id);
+    if(!v)continue;
+    try{
+      const data={
+        url:v.url, vid:v.vid||null, platform:v.platform,
+        title:v.title||'', tags:Array.isArray(v.tags)?[...v.tags]:[],
+        folder:null, note:v.note||'', thumb:v.thumb||'',
+        startTime:v.startTime||0, endTime:v.endTime||0,
+        fav:false, createdAt:Date.now(),
+        addedBy:currentUser.uid, addedByName:currentUser.displayName||''
+      };
+      await addDoc(collection(db,C_WS,target,'videos'),data);
+      if(isMove){ await deleteDoc(doc(db,C_WS,currentWsId,'videos',id)); }
+      ok++;
+    }catch(e){}
+  }
+  document.getElementById('moveModal')?.remove();
+  state.moveIds=[]; updateMoveTray();
+  notify(`${ok}件を${isMove?'移動':'コピー'}しました`);
 }
 
 function renderSidebar(){
@@ -2810,7 +2853,7 @@ window.cardAction=function(a){
   if(a==='fav')toggleFav(id);
   else if(a==='edit')openAddModal(id);
   else if(a==='compare')compareSelect(id);
-  else if(a==='move')openMoveModal(id);
+  else if(a==='move')moveSelect(id);
   else if(a==='delete')deleteVideo(id);
 };
 
