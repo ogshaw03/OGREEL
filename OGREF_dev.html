@@ -2054,7 +2054,9 @@ window.saveVideo=async function(){
   try{
     if(state.editId){
       const existing=videos.find(x=>x.id===state.editId);
-      await updateDoc(doc(db,C_WS,currentWsId,'videos',state.editId),{...data,fav:existing?existing.fav:false});
+      // 編集では createdAt / 追加者情報を変更しない（新しい順ソートで上位に来てしまうのを防ぐ）
+      const {createdAt,addedBy,addedByName,...editData}=data;
+      await updateDoc(doc(db,C_WS,currentWsId,'videos',state.editId),{...editData,fav:existing?existing.fav:false});
     }else{
       // Duplicate check
       const dup=videos.find(x=>x.url===url||(vid&&x.vid===vid&&x.platform===p));
