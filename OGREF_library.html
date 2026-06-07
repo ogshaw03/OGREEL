@@ -154,6 +154,14 @@ body.titles-shown .cell-title-ov{opacity:1}
   <button class="google-btn" id="loginBtn">Googleでログイン</button>
 </div>
 
+<!-- ACCESS DENIED -->
+<div class="overlay hidden" id="deniedScreen">
+  <div class="brand" style="font-size:22px">🚫 アクセス権がありません</div>
+  <div class="muted">このアプリの編集は、許可されたGoogleアカウントのみご利用いただけます。<br>アクセスをご希望の場合は管理者にご連絡ください。</div>
+  <div class="muted" id="deniedEmail" style="font-size:12px"></div>
+  <button class="btn btn-ghost btn-sm" id="deniedLogoutBtn">別のアカウントでログイン</button>
+</div>
+
 <!-- WORKSPACE SELECT -->
 <div class="overlay hidden" id="wsScreen">
   <div class="ws-box">
@@ -167,6 +175,7 @@ body.titles-shown .cell-title-ov{opacity:1}
     </div>
     <div style="margin-top:24px;display:flex;justify-content:center;gap:12px;align-items:center">
       <span class="muted" id="wsUserEmail" style="font-size:12px"></span>
+      <button class="btn btn-ghost btn-sm hidden" id="accessMgmtBtn" onclick="openAccessModal()">🔐 アクセス管理</button>
       <button class="btn btn-ghost btn-sm" id="logoutBtn">ログアウト</button>
     </div>
   </div>
@@ -312,6 +321,32 @@ body.titles-shown .cell-title-ov{opacity:1}
   </div>
 </div>
 
+<!-- ACCESS MANAGEMENT MODAL (admin only) -->
+<div class="modal-bg hidden" id="accessModal">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-head"><div class="modal-title">🔐 編集アクセス管理</div><button class="btn-sm" onclick="closeModal('accessModal')">✕</button></div>
+    <div class="modal-body" style="text-align:left">
+      <div class="muted" style="font-size:11px;margin-bottom:12px">許可したメールアドレス、または許可ドメインのGoogleアカウントだけが編集画面に入れます。観覧用URLは誰でも閲覧できます（この設定の影響を受けません）。</div>
+      <div class="frow"><label>許可メールアドレスを追加</label>
+        <div style="display:flex;gap:8px">
+          <input id="acNewEmail" type="email" placeholder="user@example.com" style="flex:1">
+          <button class="btn btn-primary btn-sm" id="acAddEmailBtn">追加</button>
+        </div>
+      </div>
+      <div id="acEmailList" style="margin:6px 0 14px"></div>
+      <div class="frow"><label>許可ドメインを追加（このドメインのGoogleアカウントは全員可）</label>
+        <div style="display:flex;gap:8px">
+          <input id="acNewDomain" placeholder="example.com" style="flex:1">
+          <button class="btn btn-primary btn-sm" id="acAddDomainBtn">追加</button>
+        </div>
+      </div>
+      <div id="acDomainList" style="margin:6px 0 4px"></div>
+      <div class="muted" style="font-size:11px;margin-top:10px">※ 管理者（あなた）は常にアクセス可能です。</div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('accessModal')">閉じる</button></div>
+  </div>
+</div>
+
 <div class="notif" id="notif"></div>
 
 <script type="module">
@@ -338,10 +373,12 @@ const provider = new GoogleAuthProvider();
 const DEV_MODE = true;
 const C_WS  = DEV_MODE ? 'lib_dev_workspaces' : 'lib_workspaces';
 const C_PUB = DEV_MODE ? 'lib_dev_public'     : 'lib_public';
+const C_AC  = DEV_MODE ? 'lib_dev_access_control' : 'lib_access_control';
 const LIB_LIMIT = 10;
 const ITEM_LIMIT = 200;
 
 let currentUser=null, currentWsId=null, currentWsName=null;
+let currentRole=false;   // 'admin' | 'member' | false（編集アクセス可否）
 let libraries=[], curLib=null, unsubLibs=null;
 let viewerMode=false, viewData=null;
 let curViewToken='';
@@ -353,7 +390,7 @@ function notify(m){ const n=$('notif'); n.textContent=m; n.style.display='block'
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 window.closeModal=id=>hide(id);
-const APP_BUILD='build-0607f';   // 最新版を読めているか確認用（ヘッダーに表示）
+const APP_BUILD='build-0607g';   // 最新版を読めているか確認用（ヘッダーに表示）
 try{ const _vl=$('verLabel'); if(_vl)_vl.textContent=APP_BUILD; }catch(e){}
 async function sha256(s){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 
@@ -406,19 +443,114 @@ function detailMediaHtml(it){
 }
 
 // ===== 認証 / 画面遷移 =====
-onAuthStateChanged(auth, user=>{
-  if(viewerMode) return;          // 観覧モードは認証に依存しない
-  hide('loading');
-  currentUser=user;
-  if(user){
-    $('avatar').src=user.photoURL||''; $('wsUserEmail').textContent=user.email||'';
-    hide('loginScreen'); openWsScreen();
-  } else {
-    hide('wsScreen'); hide('app'); show('loginScreen');
+// Firestore: <access_control>/config -> { adminEmails:[], allowedEmails:[], allowedDomains:[] }
+const ACCESS_DOC=doc(db,C_AC,'config');
+async function checkAccess(user){
+  try{
+    const snap=await getDoc(ACCESS_DOC);
+    if(!snap.exists()){
+      // 初回ログイン者を管理者として登録（以降はこのアカウントが許可リストを管理）
+      await setDoc(ACCESS_DOC,{adminEmails:[user.email],allowedEmails:[],allowedDomains:[],createdAt:Date.now()});
+      return 'admin';
+    }
+    const data=snap.data();
+    const email=(user.email||'').toLowerCase();
+    const admins=(data.adminEmails||[]).map(e=>String(e).toLowerCase());
+    const members=(data.allowedEmails||[]).map(e=>String(e).toLowerCase());
+    if(admins.includes(email)) return 'admin';
+    if(members.includes(email)) return 'member';
+    const domains=(data.allowedDomains||[]).map(d=>String(d).toLowerCase().replace(/^@/,''));
+    const dom=email.split('@')[1]||'';
+    if(dom && domains.includes(dom)) return 'member';
+    return false;
+  }catch(e){
+    // 取得失敗時は安全側に倒してブロック
+    return false;
   }
+}
+
+onAuthStateChanged(auth, async user=>{
+  if(viewerMode) return;          // 観覧モードは認証に依存しない
+  currentUser=user;
+  if(!user){
+    currentRole=false;
+    hide('loading'); hide('wsScreen'); hide('app'); hide('deniedScreen'); show('loginScreen');
+    return;
+  }
+  // 許可リストで編集アクセスを判定
+  show('loading');
+  currentRole=await checkAccess(user);
+  hide('loading');
+  if(!currentRole){
+    hide('loginScreen'); hide('wsScreen'); hide('app');
+    $('deniedEmail').textContent='ログイン中: '+(user.email||'');
+    show('deniedScreen');
+    return;
+  }
+  hide('deniedScreen');
+  $('avatar').src=user.photoURL||''; $('wsUserEmail').textContent=user.email||'';
+  $('accessMgmtBtn').classList.toggle('hidden', currentRole!=='admin');
+  hide('loginScreen'); openWsScreen();
 });
 $('loginBtn').onclick=()=>signInWithPopup(auth,provider).catch(e=>notify('ログイン失敗: '+e.message));
 $('logoutBtn').onclick=()=>signOut(auth);
+$('deniedLogoutBtn').onclick=()=>signOut(auth);
+
+// ===== アクセス管理（管理者のみ） =====
+window.openAccessModal=async function(){
+  if(currentRole!=='admin'){ notify('管理者のみ操作できます'); return; }
+  show('accessModal');
+  await acRender();
+};
+async function acRead(){ try{ const s=await getDoc(ACCESS_DOC); return s.exists()?s.data():{}; }catch(e){ return {}; } }
+async function acRender(){
+  const data=await acRead();
+  const admins=(data.adminEmails||[]).map(e=>String(e).toLowerCase());
+  // 許可メール一覧
+  const eList=$('acEmailList'); const emails=(data.allowedEmails||[]);
+  eList.innerHTML = emails.length ? '' : '<div class="muted" style="font-size:12px;padding:4px">許可メールはありません</div>';
+  emails.forEach(em=>{
+    const row=document.createElement('div'); row.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 8px;background:var(--bg2,#1b1b1f);border-radius:6px;margin-bottom:5px';
+    row.innerHTML=`<span style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(em)}</span>`;
+    const btn=document.createElement('button'); btn.className='btn btn-danger btn-sm'; btn.textContent='削除';
+    btn.onclick=()=>acRemoveEmail(em); row.appendChild(btn); eList.appendChild(row);
+  });
+  // 許可ドメイン一覧
+  const dList=$('acDomainList'); const domains=(data.allowedDomains||[]);
+  dList.innerHTML = domains.length ? '' : '<div class="muted" style="font-size:12px;padding:4px">許可ドメインはありません</div>';
+  domains.forEach(dm=>{
+    const row=document.createElement('div'); row.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 8px;background:var(--bg2,#1b1b1f);border-radius:6px;margin-bottom:5px';
+    row.innerHTML=`<span style="font-size:12px">@${esc(dm)}</span>`;
+    const btn=document.createElement('button'); btn.className='btn btn-danger btn-sm'; btn.textContent='削除';
+    btn.onclick=()=>acRemoveDomain(dm); row.appendChild(btn); dList.appendChild(row);
+  });
+}
+async function acAddEmail(){
+  const v=($('acNewEmail').value||'').trim().toLowerCase();
+  if(!v||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){ notify('正しいメールアドレスを入力してください'); return; }
+  try{ const d=await acRead(); const list=[...(d.allowedEmails||[])]; if(!list.includes(v))list.push(v);
+    await setDoc(ACCESS_DOC,{allowedEmails:list},{merge:true}); $('acNewEmail').value=''; await acRender(); notify('追加しました: '+v);
+  }catch(e){ notify('追加失敗: '+(e&&e.message||e)); }
+}
+async function acRemoveEmail(em){
+  try{ const d=await acRead(); const list=(d.allowedEmails||[]).filter(x=>x!==em);
+    await setDoc(ACCESS_DOC,{allowedEmails:list},{merge:true}); await acRender(); notify('削除しました');
+  }catch(e){ notify('削除失敗: '+(e&&e.message||e)); }
+}
+async function acAddDomain(){
+  let v=($('acNewDomain').value||'').trim().toLowerCase().replace(/^@/,'');
+  if(!v||!/^[^@\s]+\.[^@\s]+$/.test(v)){ notify('正しいドメインを入力してください'); return; }
+  try{ const d=await acRead(); const list=[...(d.allowedDomains||[])]; if(!list.includes(v))list.push(v);
+    await setDoc(ACCESS_DOC,{allowedDomains:list},{merge:true}); $('acNewDomain').value=''; await acRender(); notify('追加しました: @'+v);
+  }catch(e){ notify('追加失敗: '+(e&&e.message||e)); }
+}
+async function acRemoveDomain(dm){
+  try{ const d=await acRead(); const list=(d.allowedDomains||[]).filter(x=>x!==dm);
+    await setDoc(ACCESS_DOC,{allowedDomains:list},{merge:true}); await acRender(); notify('削除しました');
+  }catch(e){ notify('削除失敗: '+(e&&e.message||e)); }
+}
+$('acAddEmailBtn').onclick=acAddEmail;
+$('acAddDomainBtn').onclick=acAddDomain;
 $('backWsBtn').onclick=()=>{ closeRightPanel(); if(unsubLibs){unsubLibs();unsubLibs=null;} hide('app'); openWsScreen(); };
 
 // ===== ワークスペース =====
