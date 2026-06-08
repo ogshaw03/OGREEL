@@ -188,7 +188,6 @@ body.sb-collapsed .sidebar-toggle{left:66px}
 .vcard-thumb-no-img .no-img-label{font-size:11px;color:rgba(255,255,255,.2);letter-spacing:1px;font-family:var(--font-head)}
 .vcard-thumb-wrap .player-container{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:hidden}
 .vcard-thumb-wrap .player-container iframe{width:100%;height:100%;border:none;pointer-events:none}
-.vcard-thumb-wrap .player-container iframe[src*="drive.google"]{position:absolute;left:10%;top:-56px;width:80%;height:calc(80% + 56px);margin:0;transform:none}
 .vcard-overlay{position:absolute;left:0;right:0;bottom:0;padding:16px 8px 8px;background:linear-gradient(transparent,rgba(0,0,0,.88));z-index:3;opacity:0;transition:opacity .2s;pointer-events:none}
 .vcard:hover .vcard-overlay{opacity:1}
 body.titles-shown .vcard-overlay{opacity:1}
@@ -962,10 +961,11 @@ function applyGridSize(){
 function refitSocialIframes(){
   document.querySelectorAll('.vcard').forEach(card=>{
     const p=card.dataset.platform;
-    if(p!=='x'&&p!=='ig'&&p!=='tt')return;
     const pc=card.querySelector('.player-container');
     const ifr=pc&&pc.querySelector('iframe');
-    if(ifr)fitSocialIframe(ifr,pc,p);
+    if(!ifr)return;
+    if(p==='x'||p==='ig'||p==='tt')fitSocialIframe(ifr,pc,p);
+    else if(p==='gd')fitDriveIframe(ifr,pc);
   });
 }
 // ウィンドウ幅変更でもタイル幅が変わるため再フィット（デバウンス）
@@ -2389,6 +2389,19 @@ function fitSocialIframe(iframe,pc,platform){
   iframe.style.transformOrigin='top left';
   iframe.style.transform='translate('+left+'px,'+top+'px) scale('+scale+')';
 }
+// Google Drive: 小さいiframeでは縮小されず左上基準で大きく描画されるため、
+// 16:9の大きな論理サイズで描画させ、transformでタイル枠にフィット（cover）させる。
+function fitDriveIframe(iframe,pc){
+  const cw=pc.clientWidth||320, ch=pc.clientHeight||180;
+  const Lw=640, Lh=360; // 16:9の論理サイズ（Driveが全体を正しく描画できる十分な大きさ）
+  const scale=Math.max(cw/Lw, ch/Lh); // タイルを埋める（16:9同士なので過不足なくフィット）
+  const dW=Lw*scale, dH=Lh*scale;
+  const left=Math.round((cw-dW)/2), top=Math.round((ch-dH)/2);
+  iframe.style.width=Lw+'px';
+  iframe.style.height=Lh+'px';
+  iframe.style.transformOrigin='top left';
+  iframe.style.transform='translate('+left+'px,'+top+'px) scale('+scale+')';
+}
 function setupObserver(){
   if(gridObserver){gridObserver.disconnect();gridObserver=null;}
   gridObserver=new IntersectionObserver(entries=>{
@@ -2431,16 +2444,16 @@ function setupObserver(){
           }
         } else if(!pc.querySelector('iframe')){
           const isSocial=(platform==='x'||platform==='ig'||platform==='tt');
+          const needFit=isSocial||platform==='gd';   // Driveも論理サイズ+transformで縮小フィット
           const iframe=document.createElement('iframe');
           iframe.src=embUrl;
           iframe.allowFullscreen=true;
           iframe.allow='autoplay';
           iframe.scrolling='no';
-          // 非ソーシャルは width/height をインラインで指定しない（CSSに委ねる）。
-          // これによりDrive用CSS(.player-container iframe[src*="drive.google"]: 80%サイズ維持+上部黒帯クロップ)が
-          // 効くようになり、タイル内で動画が左上にズレる不具合を解消する。
-          iframe.style.cssText=isSocial?'opacity:0;border:none;position:absolute;left:0;top:0':'opacity:0;border:none';
-          if(isSocial)pc.style.background='#000';
+          // needFit(ソーシャル/Drive)は大きな論理サイズで描画させ transform で縮小して枠にフィット。
+          // Driveは小さいiframeだと縮小せず左上基準で大きく描画されるため、この方式で全体を表示する。
+          iframe.style.cssText=needFit?'opacity:0;border:none;position:absolute;left:0;top:0':'opacity:0;border:none';
+          if(needFit)pc.style.background='#000';
           const showIframe=()=>{
             iframe.style.opacity='1';
             if(thumb)thumb.style.opacity='0';
@@ -2459,6 +2472,7 @@ function setupObserver(){
           }
           pc.appendChild(iframe);
           if(isSocial)fitSocialIframe(iframe,pc,platform);
+          else if(platform==='gd')fitDriveIframe(iframe,pc);
         }
       }else{
         clearRangeTimer('grid_'+cardId);
