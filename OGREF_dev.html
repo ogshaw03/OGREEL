@@ -553,6 +553,7 @@ body.no-perm .m-menu-item.gated{display:none!important}
       <div class="sidebar-label">ライブラリ</div>
       <div class="nav-item active" onclick="setFilter('all',this)"><span class="ni-icon"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></span>すべて<span class="badge" id="badge-all">0</span></div>
       <div class="nav-item" onclick="setFilter('fav',this)"><span class="ni-icon">⭐</span>お気に入り<span class="badge" id="badge-fav">0</span></div>
+      <div class="nav-item" onclick="setFilter('untagged',this)"><span class="ni-icon">🏷️</span>タグなし<span class="badge" id="badge-untagged">0</span></div>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">プラットフォーム</div>
@@ -2360,6 +2361,7 @@ function getFiltered(){
     else if(state.folder&&v.folder!==state.folder)return false;
     if(state.tag&&!(v.tags||[]).includes(state.tag))return false;
     if(state.filter==='fav'&&!v.fav)return false;
+    if(state.filter==='untagged'&&(v.tags&&v.tags.length))return false;
     if(['yt','vm','nc','x','ig','gd','li','tt','local'].includes(state.filter)&&v.platform!==state.filter)return false;
     if(q&&!v.title.toLowerCase().includes(q)&&!(v.tags||[]).join(' ').toLowerCase().includes(q))return false;
     return true;
@@ -2824,6 +2826,7 @@ function renderSidebar(){
   const displayVids=getFilteredVideos();
   document.getElementById('badge-all').textContent=displayVids.length;
   document.getElementById('badge-fav').textContent=displayVids.filter(v=>v.fav).length;
+  { const ut=document.getElementById('badge-untagged'); if(ut)ut.textContent=displayVids.filter(v=>!(v.tags&&v.tags.length)).length; }
   ['yt','vm','nc','x','ig','gd','li','tt','local'].forEach(p=>{
     const el=document.getElementById('badge-'+p);
     if(el)el.textContent=displayVids.filter(v=>v.platform===p).length;
