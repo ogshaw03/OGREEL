@@ -1022,9 +1022,22 @@ onAuthStateChanged(auth, async user=>{
         }
       }catch(e){}
     }
+    // ブックマークレット等からの追加（#add=URL）。WS未指定なら追加先を選ばせる
+    if(hashParams&&hashParams.add){
+      pendingAddUrl=decodeURIComponent(hashParams.add);
+      try{history.replaceState(null,'',location.pathname+location.search);}catch(_){}
+      if(hashParams.ws){
+        try{
+          const wsSnap=await getDoc(doc(db,C_WS,hashParams.ws));
+          if(wsSnap.exists()){ const wsData=wsSnap.data(); enterWorkspace(hashParams.ws, wsData.name, wsData.code, '#7c6fff'); return; }
+        }catch(e){}
+      }
+      notify('追加先のワークスペースを選んでください');
+      await loadAndShowWsScreen();
+      return;
+    }
     // Try to restore last workspace
-    const lastWsRaw=localStorage.getItem('ogref_dev_last_ws');
-    if(lastWsRaw){
+    const lastWsRaw=localStorage.getItem('ogref_dev_last_ws');    if(lastWsRaw){
       try{
         const last=JSON.parse(lastWsRaw);
         const list=await getUserWorkspaces();
@@ -1680,7 +1693,7 @@ function startListeners(){
   }
   unsubVideos=onSnapshot(
     query(collection(db,C_WS,currentWsId,'videos'),orderBy('createdAt','desc')),
-    snap=>{videos=snap.docs.map(d=>({id:d.id,...d.data()}));if(localSnapshotWsId!==currentWsId){localVideoSnapshot=videos.filter(v=>v.platform==='local');localSnapshotWsId=currentWsId;}renderAll();checkPendingVideo();autoSyncLocal();}
+    snap=>{videos=snap.docs.map(d=>({id:d.id,...d.data()}));if(localSnapshotWsId!==currentWsId){localVideoSnapshot=videos.filter(v=>v.platform==='local');localSnapshotWsId=currentWsId;}renderAll();checkPendingVideo();checkPendingAdd();autoSyncLocal();}
   );
   // フォルダはリアルタイム購読しない。入室/リロード時に一度だけ取得し、
   // 自分の操作後のみ自分の画面を再取得する（他ユーザーの変更・リロードを即波及させない）
@@ -3933,6 +3946,16 @@ function checkPendingVideo(){
     openPlayer(v.id);
     pendingVideoId=null;
   }
+}
+// ブックマークレット等からの追加: WS入室後（動画/権限ロード後）に追加モーダルをURL入力済みで開く
+let pendingAddUrl=null;
+function checkPendingAdd(){
+  if(!pendingAddUrl||!currentWsId)return;
+  if(!canAddVideo())return;   // 権限未確定/不可なら次のsnapshotで再試行
+  const url=pendingAddUrl; pendingAddUrl=null;
+  openAddModal();
+  const inp=document.getElementById('videoUrl');
+  if(inp){ inp.value=url; try{inp.dispatchEvent(new Event('input',{bubbles:true}));}catch(_){} inp.focus(); }
 }
 
 function showChangeReport(items){
