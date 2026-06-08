@@ -1290,11 +1290,14 @@ async function amRenderDomains(){
     });
   }catch(e){if(list)list.innerHTML=`<div style="font-size:13px;color:var(--red);padding:8px">読み込み失敗: ${e.message}</div>`}
 }
-// ログインユーザーを記録（許可ドメインのユーザー一覧表示のため）。<access_control>/loggedUsers に集約
+// ログインユーザーを記録。<access_control>/loggedUsers に集約＋ <users>/{uid} に名前付きプロフィールdocを作成（Firestoreで名前を確認できるように）
 async function recordLogin(){
   if(!currentUser)return;
   try{
     await setDoc(doc(db,C_AC,'loggedUsers'),{users:{[currentUser.uid]:{email:currentUser.email||'',displayName:currentUser.displayName||'',at:Date.now()}}},{merge:true});
+  }catch(e){}
+  try{
+    await setDoc(doc(db,C_USERS,currentUser.uid),{displayName:currentUser.displayName||'',email:currentUser.email||'',photoURL:currentUser.photoURL||'',lastLogin:Date.now()},{merge:true});
   }catch(e){}
 }
 async function amRender(){
