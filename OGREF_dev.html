@@ -938,6 +938,9 @@ const C_USERS=DEV_MODE?'dev_users':'users';
 const C_FB=DEV_MODE?'dev_feedback':'feedback';
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+// Drive動画の長さ(durationMillis)取得用のメタデータ参照スコープ（自動ループのため）
+provider.addScope('https://www.googleapis.com/auth/drive.metadata.readonly');
+let driveAccessToken=null;
 
 const COLORS=['purple','blue','green','amber','red','pink','gray'];
 const COLOR_HEX={purple:'#7c6fff',blue:'#5a8fff',green:'#5affa0',amber:'#ffb85a',red:'#ff5a5a',pink:'#ff5aaa',gray:'#5a5a6a'};
@@ -1043,10 +1046,22 @@ onAuthStateChanged(auth, async user=>{
 
 window.loginWithGoogle=async function(){
   try{
-    await signInWithPopup(auth, provider);
+    const result=await signInWithPopup(auth, provider);
+    try{ const cred=GoogleAuthProvider.credentialFromResult(result); driveAccessToken=(cred&&cred.accessToken)||null; }catch(_){}
   }catch(e){
     notify('ログイン失敗: '+e.message);
   }
+}
+// Google Drive API で動画の長さ(秒)を取得（自動ループの間隔に使用）。トークンが無ければnull。
+async function fetchDriveDuration(fileId){
+  if(!fileId||!driveAccessToken)return null;
+  try{
+    const r=await fetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?fields=videoMediaMetadata(durationMillis)&supportsAllDrives=true',{headers:{Authorization:'Bearer '+driveAccessToken}});
+    if(!r.ok)return null;
+    const j=await r.json();
+    const ms=j&&j.videoMediaMetadata&&j.videoMediaMetadata.durationMillis;
+    return ms?Math.round(parseInt(ms,10)/1000):null;
+  }catch(e){ return null; }
 }
 
 window.logoutUser=async function(){
@@ -2081,6 +2096,8 @@ window.saveVideo=async function(){
   const endTime=parseStartTime(document.getElementById('videoEnd').value);
   const thumb=p==='vm'?document.getElementById('videoUrl').dataset.vimeoThumb||'':'';
   const data={url,vid:vid||null,platform:p,title,tags:state.currentTags,folder,note,thumb,startTime,endTime,fav:false,createdAt:Date.now(),addedBy:currentUser.uid,addedByName:currentUser.displayName||''};
+  // Drive動画は長さを取得して保存（自動ループに使用。取得できなければ未設定でフォールバック）
+  if(p==='gd'&&vid){ const dd=await fetchDriveDuration(vid); if(dd)data.driveDuration=dd; }
   try{
     if(state.editId){
       const existing=videos.find(x=>x.id===state.editId);
@@ -2460,15 +2477,32 @@ function setupObserver(){
           };
           const timer=setTimeout(showIframe,1000);
           iframe.addEventListener('load',()=>{clearTimeout(timer);setTimeout(showIframe,1000);});
+          const driveDur=parseInt(entry.target.dataset.driveduration)||0;
           if(cardEndTime>cardStartTime){
             iframe.addEventListener('load',()=>{
               startIframeRangeLoop('grid_'+cardId,iframe,cardEndTime-cardStartTime);
+            },{once:true});
+          } else if(platform==='gd' && driveDur>0){
+            // Driveは動画の長さで再読込してフルループ
+            iframe.addEventListener('load',()=>{
+              startIframeRangeLoop('grid_'+cardId,iframe,driveDur);
             },{once:true});
           } else if(platform==='nc'||platform==='gd'){
             pc._loopTimer=setInterval(()=>{
               const el=pc.querySelector('iframe');
               if(el){el.src=el.src;}
             }, platform==='gd'?300000:600000);
+            // 長さ未取得のDrive: トークンがあれば取得→保存し、即ループに切替（次回以降はキャッシュ利用）
+            if(platform==='gd' && driveAccessToken){
+              const did=entry.target.dataset.driveid;
+              if(did) fetchDriveDuration(did).then(dd=>{
+                if(!dd)return;
+                try{ updateDoc(doc(db,C_WS,currentWsId,'videos',cardId),{driveDuration:dd}); }catch(_){}
+                if(pc._loopTimer){clearInterval(pc._loopTimer);delete pc._loopTimer;}
+                const el=pc.querySelector('iframe');
+                if(el) startIframeRangeLoop('grid_'+cardId,el,dd);
+              });
+            }
           }
           pc.appendChild(iframe);
           if(isSocial)fitSocialIframe(iframe,pc,platform);
@@ -2537,7 +2571,7 @@ function makeCard(v){
       </div>`;
     card.addEventListener('click',()=>openPlayer(v.id));
   const embUrl=getEmbedUrl(v);
-  if(embUrl){card.dataset.emburl=embUrl;card.dataset.platform=v.platform;card.dataset.starttime=v.startTime||0;card.dataset.endtime=v.endTime||0;}
+  if(embUrl){card.dataset.emburl=embUrl;card.dataset.platform=v.platform;card.dataset.starttime=v.startTime||0;card.dataset.endtime=v.endTime||0;card.dataset.driveduration=v.driveDuration||0;card.dataset.driveid=v.vid||'';}
   else{
     // X/Instagram は自動再生不可だが、投稿埋め込みをサムネ代わりに常時表示
     const soc=getSocialEmbedUrl(v);
@@ -2561,7 +2595,7 @@ function renderGrid(){
   // 表示内容が同一なら再描画をスキップ（他ユーザーの追加等で全タイルが再読込/チラつくのを防ぐ）
   // フォルダのメタ情報(名前/色/追加削除)も署名に含め、フォルダ更新だけでもグリッドへ反映されるようにする
   const _fsig=JSON.stringify(folders.map(f=>[f.id,f.name,f.color,f.parent||'']));
-  const _sig=autoplayEnabled+'|'+sort+'|'+(state.view||'')+'|'+_fsig+'|'+JSON.stringify(list.map(v=>[v.id,v.url,v.title,v.fav?1:0,v.folder||'',(v.tags||[]).join(','),v.startTime||0,v.endTime||0,v.note||'']));
+  const _sig=autoplayEnabled+'|'+sort+'|'+(state.view||'')+'|'+_fsig+'|'+JSON.stringify(list.map(v=>[v.id,v.url,v.title,v.fav?1:0,v.folder||'',(v.tags||[]).join(','),v.startTime||0,v.endTime||0,v.note||'',v.driveDuration||0]));
   if(_sig===renderGrid._sig && g.children.length) return;
   renderGrid._sig=_sig;
   g.innerHTML='';
