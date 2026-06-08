@@ -2249,7 +2249,7 @@ function hasManualFolderUnder(full){
 function countVideosUnder(fullPath){
   const set=new Set(getDescendantFolderIds(fullPath));
   // ローカルフォルダ接続中は、ファイルが存在する動画だけを数える（getFilteredVideosと同じ基準）
-  const filterByFolder=!!currentDirHandle;
+  const filterByFolder=!!(currentDirHandle||currentLowDirHandle);
   return videos.filter(v=>set.has(v.folder) && (!filterByFolder||localFileExists(v))).length;
 }
 window.selectFolderFilter=function(fullPath){
@@ -2339,15 +2339,22 @@ window.setView=function(v){
 function localFileExists(v){
   if(!v||v.platform!=='local')return true;
   const name=v.url.replace('local:','');
+  // 元フォルダ接続中は「元フォルダに実在するか」で判定する。
+  // 軽量版(low)は再生用の補助コピーなので存在判定の根拠にしない
+  // （元から削除したのに low にコピーが残っていて消えない不具合を防ぐ）。
+  if(currentDirHandle){
+    return !!(localFileHandles[name]||localFileHandles[name.split('/').pop()]);
+  }
+  // 元フォルダ未接続で軽量版だけ接続している場合は low の有無で判定
   const lowName=name.replace(/\.[^.]+$/,'.mp4');
-  return !!(localLowHandles[lowName]||localLowHandles[lowName.split('/').pop()]||localFileHandles[name]||localFileHandles[name.split('/').pop()]);
+  return !!(localLowHandles[lowName]||localLowHandles[lowName.split('/').pop()]);
 }
 function getFilteredVideos(){
   // ローカルもライブのFirestoreデータを使用（追加が即時反映される）。
   // フォルダ接続中は「自分のフォルダに存在するローカル動画」だけ表示（他者へ波及しない）。
   const out=videos.filter(v=>v.platform!=='local');
   const _seen=new Set();
-  const filterByFolder=!!currentDirHandle;
+  const filterByFolder=!!(currentDirHandle||currentLowDirHandle);
   for(const v of videos){
     if(v.platform!=='local')continue;
     if(_seen.has(v.url))continue; _seen.add(v.url);
