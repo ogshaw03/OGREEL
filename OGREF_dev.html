@@ -2240,9 +2240,13 @@ function getFolderItemsAtLevel(pathArr){
     }
   });
   let arr=[...map.values()];
-  // ローカルフォルダ接続中は、配下に「存在する動画」が無いフォルダ(中身が削除された/空)を一覧から除外
-  if(currentDirHandle) arr=arr.filter(it=>countVideosUnder(it.full)>0);
+  // ローカルフォルダ接続中は、配下に「存在する動画」が無いフォルダ(中身が削除された/空)を一覧から除外。
+  // ただし手動作成フォルダ(source:'manual')は空でも常に表示する。
+  if(currentDirHandle) arr=arr.filter(it=>countVideosUnder(it.full)>0 || hasManualFolderUnder(it.full));
   return arr.sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+}
+function hasManualFolderUnder(full){
+  return folders.some(f=>f.source==='manual' && (f.name===full || f.name.startsWith(full+'/')));
 }
 function countVideosUnder(fullPath){
   const set=new Set(getDescendantFolderIds(fullPath));
@@ -3143,7 +3147,7 @@ window.saveFolder=async function(){
       await updateDoc(doc(db,C_WS,currentWsId,'folders',state.editFolderId),{name,color:state.selectedColor});
       closeModal('folderModal');notify('フォルダを更新しました');
     } else {
-      await addDoc(collection(db,C_WS,currentWsId,'folders'),{name,color:state.selectedColor,createdAt:Date.now()});
+      await addDoc(collection(db,C_WS,currentWsId,'folders'),{name,color:state.selectedColor,source:'manual',createdAt:Date.now()});
       closeModal('folderModal');notify('フォルダを作成しました');
     }
     await loadFolders();
@@ -3403,6 +3407,36 @@ async function dedupLocalVideos(){
   for(const id of dups){ try{await deleteDoc(doc(db,C_WS,currentWsId,'videos',id));}catch(e){} }
   return dups.length;
 }
+// 名前から決定的なフォルダdoc IDを生成（同名フォルダが複数ユーザーで二重作成されるのを防ぐ / cyrb53）
+function folderDocId(name){
+  let h1=0xdeadbeef,h2=0x41c6ce57;
+  for(let i=0;i<name.length;i++){const ch=name.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677);}
+  h1=Math.imul(h1^(h1>>>16),2246822507);h1^=Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507);h2^=Math.imul(h1^(h1>>>13),3266489909);
+  const hash=4294967296*(2097151&h2)+(h1>>>0);
+  return 'loc_'+hash.toString(36);
+}
+// 同名のフォルダdocが複数あれば1つに統合（manual優先で残す、動画参照を付け替えて重複doc削除）。globalの folders/videos を更新。
+async function dedupLocalFolders(){
+  const byName={};
+  folders.forEach(f=>{(byName[f.name]=byName[f.name]||[]).push(f);});
+  for(const arr of Object.values(byName)){
+    if(arr.length<2)continue;
+    arr.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+    const keep=arr.find(f=>f.source==='manual')||arr[0];
+    const drops=arr.filter(f=>f.id!==keep.id);
+    for(const v of videos){ if(drops.some(d=>d.id===v.folder)){ try{await updateDoc(doc(db,C_WS,currentWsId,'videos',v.id),{folder:keep.id});}catch(e){} v.folder=keep.id; } }
+    for(const d of drops){ try{await deleteDoc(doc(db,C_WS,currentWsId,'folders',d.id));}catch(e){} }
+    folders=folders.filter(f=>!drops.some(d=>d.id===f.id));
+  }
+}
+// どの動画からも参照されない 空のローカル由来フォルダを削除（manual・親フォルダ・参照ありは残す）。globalの folders を更新。
+async function cleanupEmptyLocalFolders(){
+  const used=new Set(videos.map(v=>v.folder).filter(Boolean));
+  const empties=folders.filter(f=>f.source==='local' && !used.has(f.id) && !folders.some(o=>o.id!==f.id && o.name.startsWith(f.name+'/')));
+  for(const f of empties){ try{await deleteDoc(doc(db,C_WS,currentWsId,'folders',f.id));}catch(e){} }
+  if(empties.length) folders=folders.filter(f=>!empties.some(e=>e.id===f.id));
+}
 async function autoSyncLocal(){
   // ブラウザのリロード（＝ワークスペース再入室・フォルダ復元）時に1回だけ自動スキャン同期する
   if(!pendingAutoSync)return;
@@ -3432,14 +3466,16 @@ window.refreshLocalFolder=async function(silent){
     }
   }
   for(const [folderName,files] of Object.entries(scan.subfolders)){
-    let existing=folders.find(f=>f.name===folderName);
-    let folderId=existing?existing.id:null;
+    const existing=folders.find(f=>f.name===folderName);
+    const folderId=existing?existing.id:folderDocId(folderName);
+    let folderEnsured=!!existing;   // 既存フォルダがあればsetDoc不要
     for(const fh of files){
       const url='local:'+folderName+'/'+fh.name;
       if(!existingUrls.has(url)){
-        if(!folderId){
-          const ref=await addDoc(collection(db,C_WS,currentWsId,'folders'),{name:folderName,color:COLORS[0],createdAt:Date.now()});
-          folderId=ref.id;
+        if(!folderEnsured){
+          // 決定的IDで作成（複数ユーザー同時同期でも同名フォルダが二重作成されない）
+          await setDoc(doc(db,C_WS,currentWsId,'folders',folderId),{name:folderName,color:COLORS[0],source:'local',createdAt:Date.now()},{merge:true});
+          folderEnsured=true;
         }
         await addDoc(collection(db,C_WS,currentWsId,'videos'),{
           url,vid:null,platform:'local',title:fh.name.replace(/\.[^.]+$/,''),
@@ -3466,6 +3502,19 @@ window.refreshLocalFolder=async function(silent){
   }catch(e){ _freshLocal=videos.filter(v=>v.platform==='local'); }
   // フォルダは購読していないため、自分の同期で増えた分を自分の画面に反映
   try{ const _ff=await getDocs(collection(db,C_WS,currentWsId,'folders')); folders=_ff.docs.map(d=>({id:d.id,...d.data()})); }catch(e){}
+  // ===== 歪み解消（スコープ付きGC）=====
+  if(scan){
+    const totalLocalFiles=scan.rootFiles.length+Object.values(scan.subfolders).reduce((n,a)=>n+a.length,0);
+    await dedupLocalFolders();   // 同名のローカル由来フォルダ重複を統合(動画参照を付け替え)
+    if(totalLocalFiles>0){
+      // 自分が追加したローカル動画で、実体が無いものだけ削除(他人の分は触らない。空/誤接続時は実行しない)
+      const mine=videos.filter(v=>v.platform==='local'&&v.addedBy===currentUser.uid&&!localFileExists(v));
+      for(const v of mine){ try{await deleteDoc(doc(db,C_WS,currentWsId,'videos',v.id));}catch(e){} }
+      if(mine.length) videos=videos.filter(v=>!mine.some(m=>m.id===v.id));
+    }
+    await cleanupEmptyLocalFolders();   // どの動画からも参照されない空のローカル由来フォルダを削除(manualは残す)
+    _freshLocal=videos.filter(v=>v.platform==='local');
+  }
   const newLocalVideos=[];{const _s=new Set();_freshLocal.forEach(v=>{if(!_s.has(v.url)){_s.add(v.url);newLocalVideos.push(v);}});}
   const oldUrls=new Set(oldSnapshot.map(v=>v.url));
   const newUrls=new Set(newLocalVideos.map(v=>v.url));
