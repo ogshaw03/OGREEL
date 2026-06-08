@@ -537,7 +537,9 @@ body.no-perm .m-menu-item.gated{display:none!important}
   </div>
   <div class="header-actions">
     <span class="sync-dot pc-only" title="リアルタイム同期中"></span>
-    <button class="btn btn-ghost pc-only" onclick="openLocalFolder()" title="ローカルフォルダを開く（Chrome推奨）">💾 ローカル</button>
+    <button class="btn btn-ghost pc-only" onclick="openPatchNotes()" title="更新情報">📣 更新情報</button>
+      <button class="btn btn-ghost pc-only" onclick="openFeedback()" title="意見箱">💬 意見箱</button>
+      <button class="btn btn-ghost pc-only" onclick="openLocalFolder()" title="ローカルフォルダを開く（Chrome推奨）">💾 ローカル</button>
     <button class="btn btn-ghost pc-only" onclick="openMembersModal()" title="参加者一覧">👥 参加者</button>
     <button class="btn btn-ghost pc-only" onclick="openShareModal()">🔗 共有</button>
     <button class="btn btn-primary pc-only" id="addBtn" onclick="openAddModal()">＋ 追加</button>
@@ -575,10 +577,6 @@ body.no-perm .m-menu-item.gated{display:none!important}
     <div class="sidebar-section">
       <div class="sidebar-label">タグ</div>
       <div id="tagList" style="padding:2px 4px"></div>
-    </div>
-    <div class="sidebar-bottom">
-      <button class="sidebar-feedback" onclick="openPatchNotes()" title="更新情報"><span class="sf-ic">📣</span><span class="sf-label">更新情報</span></button>
-      <button class="sidebar-feedback" onclick="openFeedback()" title="意見箱"><span class="sf-ic">💬</span><span class="sf-label">意見箱</span></button>
     </div>
   </div>
   <div class="main">
