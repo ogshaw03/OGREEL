@@ -955,7 +955,21 @@ const GRID_COLS={small:5,medium:4,large:3};
 function applyGridSize(){
   document.documentElement.style.setProperty('--cols', GRID_COLS[gridSize]||GRID_COLS.medium);
   document.querySelectorAll('.size-btn').forEach(b=>b.classList.toggle('active', b.dataset.size===gridSize));
+  // タイル幅が変わるとX/IG/TikTokの埋め込み(transformでフィット)がズレるため再計算（reflow後）
+  requestAnimationFrame(()=>requestAnimationFrame(refitSocialIframes));
 }
+// 現在表示中のソーシャル埋め込みを今の枠サイズに合わせて再フィット
+function refitSocialIframes(){
+  document.querySelectorAll('.vcard').forEach(card=>{
+    const p=card.dataset.platform;
+    if(p!=='x'&&p!=='ig'&&p!=='tt')return;
+    const pc=card.querySelector('.player-container');
+    const ifr=pc&&pc.querySelector('iframe');
+    if(ifr)fitSocialIframe(ifr,pc,p);
+  });
+}
+// ウィンドウ幅変更でもタイル幅が変わるため再フィット（デバウンス）
+let _refitTimer; window.addEventListener('resize',()=>{ clearTimeout(_refitTimer); _refitTimer=setTimeout(refitSocialIframes,150); });
 window.setGridSize=function(s){ if(!GRID_COLS[s])return; gridSize=s; localStorage.setItem('ogref_dev_gridsize',s); applyGridSize(); };
 let localVideoSnapshot=null;
 let localSnapshotWsId=null;
