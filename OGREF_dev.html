@@ -2436,7 +2436,10 @@ function setupObserver(){
           iframe.allowFullscreen=true;
           iframe.allow='autoplay';
           iframe.scrolling='no';
-          iframe.style.cssText=isSocial?'opacity:0;border:none;position:absolute;left:0;top:0':'opacity:0;width:100%;height:100%;border:none';
+          // 非ソーシャルは width/height をインラインで指定しない（CSSに委ねる）。
+          // これによりDrive用CSS(.player-container iframe[src*="drive.google"]の140%/-20%)が
+          // 効くようになり、タイル内で動画が左上にズレる不具合を解消する。
+          iframe.style.cssText=isSocial?'opacity:0;border:none;position:absolute;left:0;top:0':'opacity:0;border:none';
           if(isSocial)pc.style.background='#000';
           const showIframe=()=>{
             iframe.style.opacity='1';
