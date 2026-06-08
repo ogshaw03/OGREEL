@@ -3450,22 +3450,6 @@ async function autoSyncLocal(){
   pendingAutoSync=false;
   try{ await refreshLocalFolder(true); }catch(e){}
 }
-// 診断用（コンソールで ogDbgLocal() を実行）: ローカル動画の存在判定状態を出力
-window.ogDbgLocal=function(){
-  const info={
-    currentDirHandle:!!currentDirHandle,
-    currentLowDirHandle:!!currentLowDirHandle,
-    localFileHandlesCount:Object.keys(localFileHandles||{}).length,
-    localLowHandlesCount:Object.keys(localLowHandles||{}).length,
-    localFileHandleKeys:Object.keys(localFileHandles||{}).slice(0,40)
-  };
-  const detail=(videos||[]).filter(v=>v.platform==='local').map(v=>({
-    url:v.url, exists:localFileExists(v), mine:v.addedBy===currentUser?.uid, addedBy:v.addedByName||v.addedBy||''
-  }));
-  console.log('[OGREF DEBUG] state:', info);
-  try{ console.table(detail); }catch(e){ console.log(detail); }
-  return {info, detail};
-};
 window.refreshLocalFolder=async function(silent){
   if(!currentDirHandle){if(!silent)notify('ローカルフォルダが未接続です。💾 ローカルから接続してください');return}
   if(!silent)notify('スキャン中...');
@@ -3523,17 +3507,13 @@ window.refreshLocalFolder=async function(silent){
   }catch(e){ _freshLocal=videos.filter(v=>v.platform==='local'); }
   // フォルダは購読していないため、自分の同期で増えた分を自分の画面に反映
   try{ const _ff=await getDocs(collection(db,C_WS,currentWsId,'folders')); folders=_ff.docs.map(d=>({id:d.id,...d.data()})); }catch(e){}
-  // ===== 歪み解消（スコープ付きGC）=====
+  // ===== フォルダのみの整理（動画docは消さない）=====
+  // 重要: ローカル動画docは全ユーザー共有。リロードでの削除は「他メンバーがまだ
+  // ファイルを持っていても全員から消える」ため行わない（削除は各自の表示=localFileExistsで隠す）。
+  // フォルダの重複統合・参照ゼロの空フォルダ掃除だけ行う（動画docには触れない）。
   if(scan){
-    const totalLocalFiles=scan.rootFiles.length+Object.values(scan.subfolders).reduce((n,a)=>n+a.length,0);
-    await dedupLocalFolders();   // 同名のローカル由来フォルダ重複を統合(動画参照を付け替え)
-    if(totalLocalFiles>0){
-      // 自分が追加したローカル動画で、実体が無いものだけ削除(他人の分は触らない。空/誤接続時は実行しない)
-      const mine=videos.filter(v=>v.platform==='local'&&v.addedBy===currentUser.uid&&!localFileExists(v));
-      for(const v of mine){ try{await deleteDoc(doc(db,C_WS,currentWsId,'videos',v.id));}catch(e){} }
-      if(mine.length) videos=videos.filter(v=>!mine.some(m=>m.id===v.id));
-    }
-    await cleanupEmptyLocalFolders();   // どの動画からも参照されない空のローカル由来フォルダを削除(manualは残す)
+    await dedupLocalFolders();          // 同名のローカル由来フォルダ重複を統合(動画docは消さない)
+    await cleanupEmptyLocalFolders();   // どの動画からも参照されない空のローカル由来フォルダのみ削除(manualは残す)
     _freshLocal=videos.filter(v=>v.platform==='local');
   }
   const newLocalVideos=[];{const _s=new Set();_freshLocal.forEach(v=>{if(!_s.has(v.url)){_s.add(v.url);newLocalVideos.push(v);}});}
