@@ -2437,7 +2437,7 @@ function setupObserver(){
           iframe.allow='autoplay';
           iframe.scrolling='no';
           // 非ソーシャルは width/height をインラインで指定しない（CSSに委ねる）。
-          // これによりDrive用CSS(.player-container iframe[src*="drive.google"]の140%/-20%)が
+          // これによりDrive用CSS(.player-container iframe[src*="drive.google"]の120%/-10%)が
           // 効くようになり、タイル内で動画が左上にズレる不具合を解消する。
           iframe.style.cssText=isSocial?'opacity:0;border:none;position:absolute;left:0;top:0':'opacity:0;border:none';
           if(isSocial)pc.style.background='#000';
