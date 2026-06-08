@@ -2443,39 +2443,47 @@ function setupObserver(){
             }
           }
         } else if(!pc.querySelector('iframe')){
-          const isSocial=(platform==='x'||platform==='ig'||platform==='tt');
-          const needFit=isSocial||platform==='gd';   // Driveも論理サイズ+transformで縮小フィット
-          const iframe=document.createElement('iframe');
-          iframe.src=embUrl;
-          iframe.allowFullscreen=true;
-          iframe.allow='autoplay';
-          iframe.scrolling='no';
-          // needFit(ソーシャル/Drive)は大きな論理サイズで描画させ transform で縮小して枠にフィット。
-          // Driveは小さいiframeだと縮小せず左上基準で大きく描画されるため、この方式で全体を表示する。
-          iframe.style.cssText=needFit?'opacity:0;border:none;position:absolute;left:0;top:0':'opacity:0;border:none';
-          if(needFit)pc.style.background='#000';
-          const showIframe=()=>{
-            iframe.style.opacity='1';
-            if(thumb)thumb.style.opacity='0';
+          const createIframe=()=>{
+            if(pc.querySelector('iframe'))return;
+            const isSocial=(platform==='x'||platform==='ig'||platform==='tt');
+            const needFit=isSocial||platform==='gd';   // Driveも論理サイズ+transformで縮小フィット
+            const iframe=document.createElement('iframe');
+            iframe.src=embUrl;
+            iframe.allowFullscreen=true;
+            iframe.allow='autoplay';
+            iframe.scrolling='no';
+            // needFit(ソーシャル/Drive)は大きな論理サイズで描画させ transform で縮小して枠にフィット。
+            iframe.style.cssText=needFit?'opacity:0;border:none;position:absolute;left:0;top:0':'opacity:0;border:none';
+            if(needFit)pc.style.background='#000';
+            const showIframe=()=>{ iframe.style.opacity='1'; if(thumb)thumb.style.opacity='0'; };
+            const timer=setTimeout(showIframe,1000);
+            iframe.addEventListener('load',()=>{clearTimeout(timer);setTimeout(showIframe,1000);});
+            if(cardEndTime>cardStartTime){
+              iframe.addEventListener('load',()=>{
+                startIframeRangeLoop('grid_'+cardId,iframe,cardEndTime-cardStartTime);
+              },{once:true});
+            } else if(platform==='nc'){
+              // niconicoのみ定期再読込でループ（Driveは再生が途切れるため定期再読込しない）
+              pc._loopTimer=setInterval(()=>{
+                const el=pc.querySelector('iframe');
+                if(el){el.src=el.src;}
+              }, 600000);
+            }
+            pc.appendChild(iframe);
+            if(isSocial)fitSocialIframe(iframe,pc,platform);
+            else if(platform==='gd')fitDriveIframe(iframe,pc);
           };
-          const timer=setTimeout(showIframe,1000);
-          iframe.addEventListener('load',()=>{clearTimeout(timer);setTimeout(showIframe,1000);});
-          if(cardEndTime>cardStartTime){
-            iframe.addEventListener('load',()=>{
-              startIframeRangeLoop('grid_'+cardId,iframe,cardEndTime-cardStartTime);
-            },{once:true});
-          } else if(platform==='nc'||platform==='gd'){
-            pc._loopTimer=setInterval(()=>{
-              const el=pc.querySelector('iframe');
-              if(el){el.src=el.src;}
-            }, platform==='gd'?300000:600000);
+          if(platform==='gd'){
+            // Driveは生成が重く自動再生も不安定。スクロール中の生成/破棄churnを避けるため、
+            // 一定時間表示され続けてから生成する（画面外に出たら下のleave分岐でキャンセル）。
+            if(!pc._createTimer) pc._createTimer=setTimeout(()=>{ delete pc._createTimer; createIframe(); },350);
+          } else {
+            createIframe();
           }
-          pc.appendChild(iframe);
-          if(isSocial)fitSocialIframe(iframe,pc,platform);
-          else if(platform==='gd')fitDriveIframe(iframe,pc);
         }
       }else{
         clearRangeTimer('grid_'+cardId);
+        if(pc._createTimer){clearTimeout(pc._createTimer);delete pc._createTimer;}
         if(pc._loopTimer){clearInterval(pc._loopTimer);delete pc._loopTimer;}
         if(pc._objUrl){URL.revokeObjectURL(pc._objUrl);delete pc._objUrl;}
         if(thumb)thumb.style.opacity='1';
