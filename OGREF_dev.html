@@ -3450,6 +3450,22 @@ async function autoSyncLocal(){
   pendingAutoSync=false;
   try{ await refreshLocalFolder(true); }catch(e){}
 }
+// 診断用（コンソールで ogDbgLocal() を実行）: ローカル動画の存在判定状態を出力
+window.ogDbgLocal=function(){
+  const info={
+    currentDirHandle:!!currentDirHandle,
+    currentLowDirHandle:!!currentLowDirHandle,
+    localFileHandlesCount:Object.keys(localFileHandles||{}).length,
+    localLowHandlesCount:Object.keys(localLowHandles||{}).length,
+    localFileHandleKeys:Object.keys(localFileHandles||{}).slice(0,40)
+  };
+  const detail=(videos||[]).filter(v=>v.platform==='local').map(v=>({
+    url:v.url, exists:localFileExists(v), mine:v.addedBy===currentUser?.uid, addedBy:v.addedByName||v.addedBy||''
+  }));
+  console.log('[OGREF DEBUG] state:', info);
+  try{ console.table(detail); }catch(e){ console.log(detail); }
+  return {info, detail};
+};
 window.refreshLocalFolder=async function(silent){
   if(!currentDirHandle){if(!silent)notify('ローカルフォルダが未接続です。💾 ローカルから接続してください');return}
   if(!silent)notify('スキャン中...');
