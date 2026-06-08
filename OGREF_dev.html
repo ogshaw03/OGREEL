@@ -885,7 +885,10 @@ body.no-perm .m-menu-item.gated{display:none!important}
     <div class="modal-body">
       <div class="form-row" style="margin-bottom:10px">
         <label class="form-label">Explorer用ベースパス（作成者のみ変更可・全メンバー共有）</label>
-        <input type="text" class="form-input" id="localBasePath" placeholder="例: D:\Reference\動画" style="font-family:monospace;font-size:12px" onchange="saveBasePath()">
+        <div style="display:flex;gap:6px;align-items:stretch">
+          <input type="text" class="form-input" id="localBasePath" placeholder="例: D:\Reference\動画" style="flex:1;font-family:monospace;font-size:12px" onchange="saveBasePath()">
+          <button class="btn btn-ghost" onclick="copyBasePath()" title="ベースパスをコピー" style="flex-shrink:0;padding:0 12px"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+        </div>
         <div style="font-size:11px;color:var(--text3);margin-top:4px">選択したフォルダの絶対パスを入力するとExplorerで開くが使えます</div>
       </div>
       <div class="form-row" style="margin-bottom:10px">
@@ -3824,6 +3827,12 @@ window.saveBasePath=async function(){
     cachedBasePath=val;
     notify('ベースパスを保存しました');
   }catch(e){notify('保存失敗: '+e.message)}
+}
+
+window.copyBasePath=function(){
+  const v=document.getElementById('localBasePath').value.trim();
+  if(!v){notify('ベースパスが未設定です');return}
+  navigator.clipboard.writeText(v).then(()=>notify('ベースパスをコピーしました')).catch(()=>notify('コピーに失敗しました'));
 }
 
 function getBasePath(){
