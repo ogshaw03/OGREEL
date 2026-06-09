@@ -60,7 +60,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 .section-label{font-size:11px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin:18px 0 8px;text-align:left}
 
 /* header */
-.header{display:flex;align-items:center;gap:12px;padding:0 16px;height:54px;border-bottom:1px solid var(--accent-ov);background:var(--accent);flex-shrink:0;color:var(--on-accent)}
+.header{display:flex;align-items:center;gap:12px;padding:0 16px;height:54px;border-bottom:1px solid var(--accent-ov);background:var(--accent2);flex-shrink:0;color:var(--on-accent)}
 .logo{font-weight:800;font-size:17px;letter-spacing:.5px}.logo .sub{color:var(--on-accent-dim)}
 .header .logo{color:var(--on-accent)}.header .logo .ver{color:var(--on-accent-dim)}
 .header .muted{color:var(--on-accent-dim)!important}
@@ -73,7 +73,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 
 /* layout */
 .app-body{display:flex;flex:1;overflow:hidden}
-.sidebar{width:240px;flex-shrink:0;background:var(--accent);border-right:1px solid var(--accent-ov);display:flex;flex-direction:column;overflow-y:auto;padding:12px 10px}
+.sidebar{width:240px;flex-shrink:0;background:var(--accent2);border-right:1px solid var(--accent-ov);display:flex;flex-direction:column;overflow-y:auto;padding:12px 10px}
 .sb-title{font-size:11px;letter-spacing:1.5px;color:var(--on-accent-dim);text-transform:uppercase;padding:4px 6px;display:flex;justify-content:space-between;align-items:center}
 .lib-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:var(--radius2);font-size:13px;color:var(--on-accent);cursor:pointer;margin-top:4px}
 .lib-item:hover{background:var(--accent-ov);color:var(--on-accent)}
@@ -164,7 +164,7 @@ body.titles-shown .cell-title-ov{opacity:1}
 
 /* viewer */
 .viewer .toolbar,.viewer .new-lib-btn,.viewer .cell-actions,.viewer .cell-handle,.viewer .sb-title .btn{display:none!important}
-.viewer-head{display:flex;align-items:center;gap:10px;padding:0 16px;height:54px;border-bottom:1px solid var(--accent-ov);background:var(--accent);flex-shrink:0;color:var(--on-accent)}
+.viewer-head{display:flex;align-items:center;gap:10px;padding:0 16px;height:54px;border-bottom:1px solid var(--accent-ov);background:var(--accent2);flex-shrink:0;color:var(--on-accent)}
 .viewer-head .muted{color:var(--on-accent-dim)!important}
 .viewer-head .btn-ghost{border-color:var(--accent-ov2);color:var(--on-accent)}
 .viewer-head .btn-ghost:hover{border-color:var(--accent-ov2);color:var(--on-accent);background:var(--accent-ov)}
@@ -460,7 +460,7 @@ function notify(m){ const n=$('notif'); n.textContent=m; n.style.display='block'
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 window.closeModal=id=>hide(id);
-const APP_BUILD='build-0608a';   // 最新版を読めているか確認用（ヘッダーに表示）
+const APP_BUILD='build-0608b';   // 最新版を読めているか確認用（ヘッダーに表示）
 try{ const _vl=$('verLabel'); if(_vl)_vl.textContent=APP_BUILD; }catch(e){}
 
 // ===== テーマカラー（ライブラリごと・アクセント＋背景） =====
@@ -497,13 +497,14 @@ function themeV(theme,custom){
 function applyTheme(theme,custom){
   const v=themeV(theme,custom), b=document.body;
   Object.entries(v).forEach(([k,val])=>b.style.setProperty(k,val));
-  // アクセント背景(サイドバー/ヘッダー)上で使う文字色・オーバーレイをアクセントの明暗から算出
-  const accent=v['--accent']||'#7c6fff';
-  const lightAccent=lum(accent)>0.6;   // 明るいアクセント→濃い文字 / 暗いアクセント→白文字
-  b.style.setProperty('--on-accent',     lightAccent?'#1a1a20':'#ffffff');
-  b.style.setProperty('--on-accent-dim', lightAccent?'rgba(0,0,0,.55)':'rgba(255,255,255,.74)');
-  b.style.setProperty('--accent-ov',     lightAccent?'rgba(0,0,0,.10)':'rgba(255,255,255,.16)');
-  b.style.setProperty('--accent-ov2',    lightAccent?'rgba(0,0,0,.20)':'rgba(255,255,255,.30)');
+  // サイドバー/ヘッダーは「サブカラー(--accent2)」で塗る。その上の文字色/オーバーレイを
+  // サブカラーの明暗から算出（明るい→濃い文字 / 暗い→白文字）。メインのアクセントは従来用途のまま。
+  const sub=v['--accent2']||v['--accent']||'#5a4fff';
+  const lightSub=lum(sub)>0.6;
+  b.style.setProperty('--on-accent',     lightSub?'#1a1a20':'#ffffff');
+  b.style.setProperty('--on-accent-dim', lightSub?'rgba(0,0,0,.55)':'rgba(255,255,255,.74)');
+  b.style.setProperty('--accent-ov',     lightSub?'rgba(0,0,0,.10)':'rgba(255,255,255,.16)');
+  b.style.setProperty('--accent-ov2',    lightSub?'rgba(0,0,0,.20)':'rgba(255,255,255,.30)');
 }
 async function sha256(s){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 
