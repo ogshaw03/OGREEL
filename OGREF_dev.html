@@ -3538,13 +3538,12 @@ window.refreshLocalFolder=async function(silent){
     if(match===false){
       notify('接続中のフォルダ名がベースパスと異なります。正しい共有フォルダを接続してください（安全のため自動整理は停止中）。');
     } else if(scanUrls.size>0 && localDocs.length>0){
+      // スキャンに無い=共有フォルダから消えた=全員から消すべき。過半数でも削除する
+      // (誤接続はフォルダ名不一致ガードで防止。スキャン空のときは整合しない)。
       const orphans=localDocs.filter(v=>!scanUrls.has(v.url));
-      const limit=Math.max(3, Math.floor(localDocs.length*0.5));
-      if(orphans.length>0 && orphans.length<=limit){
+      if(orphans.length>0){
         for(const v of orphans){ try{await deleteDoc(doc(db,C_WS,currentWsId,'videos',v.id));}catch(e){} }
         videos=videos.filter(v=>!orphans.some(o=>o.id===v.id));
-      } else if(orphans.length>limit){
-        notify('共有フォルダに見つからない動画が多すぎます（'+orphans.length+'件）。接続フォルダをご確認ください。安全のため自動削除は行いませんでした。');
       }
     }
     await dedupLocalFolders();          // 同名のローカル由来フォルダ重複を統合
