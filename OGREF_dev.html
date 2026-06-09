@@ -3279,6 +3279,7 @@ async function loadFolderHandle(dirHandle, showList){
   // renderGridだけだとフォルダ一覧が「localFileHandlesが空のまま描画された状態」で残り、
   // ローカルフォルダ内に動画があってもフォルダが表示されないことがある。
   renderAll();
+  warnIfFolderMismatch();   // 接続フォルダ名がベースパスと違えば警告（誤接続検知）
   if(showList){
     const list=document.getElementById('localFileList');
     const total=rootFiles.length+Object.values(subfolders).reduce((a,b)=>a+b.length,0);
@@ -3450,6 +3451,21 @@ async function autoSyncLocal(){
   pendingAutoSync=false;
   try{ await refreshLocalFolder(true); }catch(e){}
 }
+// 接続中フォルダ名 と ベースパス末尾名 の一致判定（フルパスはAPI上取得不可のため名前で照合）
+// true=一致 / false=不一致 / null=判定不能（どちらか未設定）
+function folderMatchesBase(){
+  const base=(getBasePath()||'').split(/[\\/]/).map(s=>s.trim()).filter(Boolean).pop()||'';
+  const conn=((currentDirHandle&&currentDirHandle.name)||'').trim();
+  if(!base||!conn) return null;
+  return base.toLowerCase()===conn.toLowerCase();
+}
+// 接続フォルダ名がベースパスと違うとき警告（誤接続の検知）
+function warnIfFolderMismatch(){
+  if(folderMatchesBase()===false){
+    const base=(getBasePath()||'').split(/[\\/]/).map(s=>s.trim()).filter(Boolean).pop()||'';
+    notify('接続中のフォルダ「'+(currentDirHandle&&currentDirHandle.name||'')+'」がベースパス「'+base+'」と異なります。正しい共有フォルダか確認してください。');
+  }
+}
 window.refreshLocalFolder=async function(silent){
   if(!currentDirHandle){if(!silent)notify('ローカルフォルダが未接続です。💾 ローカルから接続してください');return}
   if(!silent)notify('スキャン中...');
@@ -3507,13 +3523,31 @@ window.refreshLocalFolder=async function(silent){
   }catch(e){ _freshLocal=videos.filter(v=>v.platform==='local'); }
   // フォルダは購読していないため、自分の同期で増えた分を自分の画面に反映
   try{ const _ff=await getDocs(collection(db,C_WS,currentWsId,'folders')); folders=_ff.docs.map(d=>({id:d.id,...d.data()})); }catch(e){}
-  // ===== フォルダのみの整理（動画docは消さない）=====
-  // 重要: ローカル動画docは全ユーザー共有。リロードでの削除は「他メンバーがまだ
-  // ファイルを持っていても全員から消える」ため行わない（削除は各自の表示=localFileExistsで隠す）。
-  // フォルダの重複統合・参照ゼロの空フォルダ掃除だけ行う（動画docには触れない）。
+  // ===== 共有フォルダ整合（社内共有フォルダ前提）=====
+  // 全員が同じ共有フォルダを参照する前提のため、スキャンに無いローカル動画＝共有フォルダから
+  // 消えた＝全員から消すべき、としてサーバーのdocも削除する。
+  // 安全策: (1)接続フォルダ名がベースパス末尾名と不一致なら整合しない(誤接続防止)
+  //         (2)スキャンが空なら整合しない (3)一度に半数超が消える場合は中止して警告。
   if(scan){
-    await dedupLocalFolders();          // 同名のローカル由来フォルダ重複を統合(動画docは消さない)
-    await cleanupEmptyLocalFolders();   // どの動画からも参照されない空のローカル由来フォルダのみ削除(manualは残す)
+    const scanUrls=new Set();
+    scan.rootFiles.forEach(fh=>scanUrls.add('local:'+fh.name));
+    for(const [fn,files] of Object.entries(scan.subfolders)) files.forEach(fh=>scanUrls.add('local:'+fn+'/'+fh.name));
+    const localDocs=videos.filter(v=>v.platform==='local');
+    const match=folderMatchesBase();   // true / false / null(判定不能)
+    if(match===false){
+      notify('接続中のフォルダ名がベースパスと異なります。正しい共有フォルダを接続してください（安全のため自動整理は停止中）。');
+    } else if(scanUrls.size>0 && localDocs.length>0){
+      const orphans=localDocs.filter(v=>!scanUrls.has(v.url));
+      const limit=Math.max(3, Math.floor(localDocs.length*0.5));
+      if(orphans.length>0 && orphans.length<=limit){
+        for(const v of orphans){ try{await deleteDoc(doc(db,C_WS,currentWsId,'videos',v.id));}catch(e){} }
+        videos=videos.filter(v=>!orphans.some(o=>o.id===v.id));
+      } else if(orphans.length>limit){
+        notify('共有フォルダに見つからない動画が多すぎます（'+orphans.length+'件）。接続フォルダをご確認ください。安全のため自動削除は行いませんでした。');
+      }
+    }
+    await dedupLocalFolders();          // 同名のローカル由来フォルダ重複を統合
+    await cleanupEmptyLocalFolders();   // 動画docが消えて参照ゼロになったローカルフォルダを削除(manual/親は残す)
     _freshLocal=videos.filter(v=>v.platform==='local');
   }
   const newLocalVideos=[];{const _s=new Set();_freshLocal.forEach(v=>{if(!_s.has(v.url)){_s.add(v.url);newLocalVideos.push(v);}});}
