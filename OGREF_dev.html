@@ -2496,8 +2496,8 @@ function setupObserver(){
             iframe.style.cssText=needFit?'opacity:0;border:none;position:absolute;left:0;top:0':'opacity:0;border:none';
             if(needFit)pc.style.background='#000';
             const showIframe=()=>{ iframe.style.opacity='1'; if(thumb)thumb.style.opacity='0'; };
-            const timer=setTimeout(showIframe,1000);
-            iframe.addEventListener('load',()=>{clearTimeout(timer);setTimeout(showIframe,1000);});
+            const timer=setTimeout(showIframe,1000);   // load未発火時のフォールバック
+            iframe.addEventListener('load',()=>{clearTimeout(timer);showIframe();});   // load完了で即表示(固定1000ms遅延を撤去しラグ低減)
             if(cardEndTime>cardStartTime){
               iframe.addEventListener('load',()=>{
                 startIframeRangeLoop('grid_'+cardId,iframe,cardEndTime-cardStartTime);
