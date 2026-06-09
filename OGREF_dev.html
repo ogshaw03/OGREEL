@@ -976,6 +976,7 @@ window.setGridSize=function(s){ if(!GRID_COLS[s])return; gridSize=s; localStorag
 let localVideoSnapshot=null;
 let localSnapshotWsId=null;
 let pendingAutoSync=false;
+let _videosRenderedOnce=false;   // グリッド初回描画済みフラグ(WS入室でリセット)。他者由来の変更で再描画しないため
 let state={filter:'all',folder:null,tag:null,view:'grid',editId:null,editFolderId:null,currentTags:[],selectedColor:'purple',currentPlayId:null,folderPath:[],folderIds:null,folderSel:null,expandedFolders:new Set(),compareIds:[],moveIds:[]};
 let currentUser=null;
 let currentRole=null;            // 'admin' | 'member' | null
@@ -1657,7 +1658,7 @@ function enterWorkspace(id, name, code, color){
   document.querySelectorAll('.js-ws-name').forEach(_n=>_n.textContent=name);
   document.querySelectorAll('.js-ws-dot').forEach(_d=>_d.style.background=color||'#7c6fff');
   initAutoplayBtn(); applyGridSize();
-  localVideoSnapshot=null;localSnapshotWsId=null;pendingAutoSync=true;_wsFolderReady=false;cachedFolderName='';wsAddPermission='all';myCanAdd=false;renderGrid._sig=null;state.moveIds=[];state.compareIds=[];
+  localVideoSnapshot=null;localSnapshotWsId=null;pendingAutoSync=true;_videosRenderedOnce=false;_wsFolderReady=false;cachedFolderName='';wsAddPermission='all';myCanAdd=false;renderGrid._sig=null;state.moveIds=[];state.compareIds=[];
   startListeners();
   recordMembership();
   loadBasePath();
@@ -1695,7 +1696,16 @@ function startListeners(){
   }
   unsubVideos=onSnapshot(
     query(collection(db,C_WS,currentWsId,'videos'),orderBy('createdAt','desc')),
-    snap=>{videos=snap.docs.map(d=>({id:d.id,...d.data()}));if(localSnapshotWsId!==currentWsId){localVideoSnapshot=videos.filter(v=>v.platform==='local');localSnapshotWsId=currentWsId;}renderAll();checkPendingVideo();checkPendingAdd();autoSyncLocal();}
+    snap=>{
+      videos=snap.docs.map(d=>({id:d.id,...d.data()}));
+      if(localSnapshotWsId!==currentWsId){localVideoSnapshot=videos.filter(v=>v.platform==='local');localSnapshotWsId=currentWsId;}
+      // 他ユーザー由来の変更ではグリッドを再描画しない（閲覧中にタイル位置がズレるのを防ぐ）。
+      // 初回表示 or 自分の操作(hasPendingWrites)のときだけグリッドも更新。リモート変更はサイドバーのみ。
+      const fromMe=!!(snap.metadata && snap.metadata.hasPendingWrites);
+      if(!_videosRenderedOnce || fromMe){ renderAll(); _videosRenderedOnce=true; }
+      else { renderSidebar(); }
+      checkPendingVideo();checkPendingAdd();autoSyncLocal();
+    }
   );
   // フォルダはリアルタイム購読しない。入室/リロード時に一度だけ取得し、
   // 自分の操作後のみ自分の画面を再取得する（他ユーザーの変更・リロードを即波及させない）
