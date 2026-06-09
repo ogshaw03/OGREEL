@@ -102,6 +102,13 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 .cell.insert-after{box-shadow:4px 0 0 0 var(--accent)}
 .cell.row.insert-before{box-shadow:0 -4px 0 0 var(--accent)}
 .cell.row.insert-after{box-shadow:0 4px 0 0 var(--accent)}
+.lib-grid.picking .cell{cursor:copy}
+.lib-grid.picking .cell-actions,.lib-grid.picking .cell-handle,.lib-grid.picking .cell-click{pointer-events:none}
+.lib-grid.picking .cell.insert-before{box-shadow:-5px 0 0 0 var(--accent),0 0 0 2px var(--accent) inset}
+.lib-grid.picking .cell.insert-after{box-shadow:5px 0 0 0 var(--accent),0 0 0 2px var(--accent) inset}
+.lib-grid.picking .cell.row.insert-before{box-shadow:0 -5px 0 0 var(--accent),0 0 0 2px var(--accent) inset}
+.lib-grid.picking .cell.row.insert-after{box-shadow:0 5px 0 0 var(--accent),0 0 0 2px var(--accent) inset}
+#insertHint{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:3000;background:var(--accent);color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.4);pointer-events:none}
 .cell-media{position:relative;width:100%;aspect-ratio:var(--aspect,16/9);background:#000}
 .media-cell{border:var(--frame-w,1px) solid var(--frame-c,var(--border))}
 .cell-media iframe,.cell-media img,.cell-media video{position:absolute;inset:0;width:100%;height:100%;border:none;object-fit:cover}
@@ -459,8 +466,8 @@ function hide(id){ $(id).classList.add('hidden'); }
 function notify(m){ const n=$('notif'); n.textContent=m; n.style.display='block'; clearTimeout(n._t); n._t=setTimeout(()=>n.style.display='none',3000); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
-window.closeModal=id=>hide(id);
-const APP_BUILD='build-0608b';   // 最新版を読めているか確認用（ヘッダーに表示）
+window.closeModal=id=>{ if(id==='mediaModal'||id==='textModal')pendingInsertAt=null; hide(id); };
+const APP_BUILD='build-0608c';   // 最新版を読めているか確認用（ヘッダーに表示）
 try{ const _vl=$('verLabel'); if(_vl)_vl.textContent=APP_BUILD; }catch(e){}
 
 // ===== テーマカラー（ライブラリごと・アクセント＋背景） =====
@@ -794,6 +801,7 @@ function applyGridStyle(grid){
 }
 function makeCell(it,idx){
   const c=document.createElement('div');
+  c.dataset.idx=idx;
   if(it.type==='text'){
     c.className='cell row text';
     const ts=`${it.color?`color:${it.color};`:''}${it.border?`border:2px solid ${it.border};border-radius:8px;padding:10px 12px;`:''}`;
@@ -928,7 +936,7 @@ function openMediaModal(idx=-1){
   $('mediaNote').value=it?(it.note||''):'';
   show('mediaModal'); setTimeout(()=>$('mediaUrl').focus(),50);
 }
-$('addMediaBtn').onclick=()=>openMediaModal(-1);
+$('addMediaBtn').onclick=()=>startInsert('media');
 $('mediaSaveBtn').onclick=async()=>{
   const url=$('mediaUrl').value.trim(); if(!url){notify('URLを入力してください');return;}
   let kind=$('mediaKind').value; if(kind==='auto')kind=guessKind(url);
@@ -941,7 +949,9 @@ $('mediaSaveBtn').onclick=async()=>{
   else {
     const media=curLib.items.filter(x=>x.type==='media').length;
     if(media>=ITEM_LIMIT){notify(`メディアは1ライブラリ${ITEM_LIMIT}個までです`);return;}
-    curLib.items.push({id:uid(),type:'media',...obj});
+    const m={id:uid(),type:'media',...obj};
+    if(pendingInsertAt!=null){ curLib.items.splice(Math.min(pendingInsertAt,curLib.items.length),0,m); pendingInsertAt=null; }
+    else curLib.items.push(m);
   }
   closeModal('mediaModal'); renderEditor(); saveItems();
 };
@@ -991,24 +1001,70 @@ function fillTextModal(it){
   $('textColorOn').checked=!!(it&&it.color); $('textColor').value=(it&&it.color)||themeV(curLib.theme,curLib.themeCustom)['--text']||'#e8e8ec';
   $('textBorderOn').checked=!!(it&&it.border); $('textBorderColor').value=(it&&it.border)||themeV(curLib.theme,curLib.themeCustom)['--accent']||'#7c6fff';
 }
-$('addTextBtn').onclick=()=>{ if(!curLib){notify('先にライブラリを選択してください');return;} textEditIdx=-1; $('textModalTitle').textContent='テキストを追加'; fillTextModal(null); show('textModal'); $('textInput').focus(); };
+$('addTextBtn').onclick=()=>startInsert('text');
 function editText(idx){ textEditIdx=idx; $('textModalTitle').textContent='テキストを編集'; fillTextModal(curLib.items[idx]); show('textModal'); $('textInput').focus(); }
 $('textSaveBtn').onclick=()=>{
   const content=$('textInput').value; if(!content.trim()){notify('本文を入力してください');return;}
   const color=$('textColorOn').checked?$('textColor').value:null;
   const border=$('textBorderOn').checked?$('textBorderColor').value:null;
   if(textEditIdx>=0){ const t=curLib.items[textEditIdx]; t.content=content; t.color=color; t.border=border; }
-  else { curLib.items=curLib.items||[]; curLib.items.push({id:uid(),type:'text',content,color,border}); }
+  else { curLib.items=curLib.items||[]; const t={id:uid(),type:'text',content,color,border}; if(pendingInsertAt!=null){ curLib.items.splice(Math.min(pendingInsertAt,curLib.items.length),0,t); pendingInsertAt=null; } else curLib.items.push(t); }
   closeModal('textModal'); renderEditor(); saveItems();
 };
 // 追加: セパレーター
-$('addSepBtn').onclick=()=>{ if(!curLib){notify('先にライブラリを選択してください');return;} curLib.items=curLib.items||[]; curLib.items.push({id:uid(),type:'separator',sepWidth:1,sepColor:'border'}); renderEditor(); saveItems(); };
+$('addSepBtn').onclick=()=>startInsert('sep');
 // 区切り線の編集（太さ・色）
 let sepEditIdx=-1;
 function editSep(idx){ sepEditIdx=idx; const it=curLib.items[idx]; $('sepWidth').value=String(it.sepWidth||1); $('sepWidthVal').textContent=(it.sepWidth||1)+'px'; $('sepColor').value=sepColorHex(it); show('sepModal'); }
 function sepColorHex(it){ const c=it.sepColor||'border'; if(c!=='border'&&/^#/.test(c))return c; return themeV(curLib.theme,curLib.themeCustom)['--border2']||'#3a3a42'; }
 $('sepWidth').oninput=()=>{ $('sepWidthVal').textContent=$('sepWidth').value+'px'; };
 $('sepSaveBtn').onclick=()=>{ if(sepEditIdx<0)return; const it=curLib.items[sepEditIdx]; it.sepWidth=parseInt($('sepWidth').value); it.sepColor=$('sepColor').value; closeModal('sepModal'); renderEditor(); saveItems(); };
+
+// ===== 追加位置の選択（ホバーでハイライト→クリックで挿入）=====
+let insertType=null;      // 'media'|'text'|'sep' or null（位置選択中）
+let pendingInsertAt=null; // メディア/テキストのモーダル保存時に挿入する位置
+function exitInsertMode(){ insertType=null; const g=$('libGrid'); if(g)g.classList.remove('picking'); clearDragMarks(); const h=document.getElementById('insertHint'); if(h)h.remove(); }
+function startInsert(type){
+  if(!curLib){notify('先にライブラリを選択/作成してください');return;}
+  const items=curLib.items||[];
+  if(!items.length){ placeInsert(type,0); return; }   // 空なら位置選択不要
+  insertType=type;
+  $('libGrid').classList.add('picking');
+  let h=document.getElementById('insertHint'); if(!h){h=document.createElement('div');h.id='insertHint';document.body.appendChild(h);}
+  h.textContent='挿入位置をクリックしてください（Escで取消）';
+}
+function placeInsert(type,at){
+  exitInsertMode();
+  curLib.items=curLib.items||[];
+  at=Math.max(0,Math.min(at,curLib.items.length));
+  if(type==='sep'){
+    curLib.items.splice(at,0,{id:uid(),type:'separator',sepWidth:1,sepColor:'border'});
+    renderEditor(); saveItems();
+  } else if(type==='media'){
+    pendingInsertAt=at; openMediaModal(-1);
+  } else if(type==='text'){
+    pendingInsertAt=at; textEditIdx=-1; $('textModalTitle').textContent='テキストを追加'; fillTextModal(null); show('textModal'); setTimeout(()=>$('textInput').focus(),50);
+  }
+}
+// グリッドにホバー/クリックの委譲ハンドラを一度だけ取り付け（位置選択中のみ作動）
+(function initInsertPicker(){
+  const g=$('libGrid'); if(!g)return;
+  g.addEventListener('mousemove',e=>{
+    if(!insertType)return;
+    const cell=e.target.closest('.cell'); clearDragMarks();
+    if(cell)cell.classList.add(insertAfterSide(cell,e)?'insert-after':'insert-before');
+  });
+  g.addEventListener('click',e=>{
+    if(!insertType)return;
+    e.preventDefault(); e.stopPropagation();
+    const cell=e.target.closest('.cell');
+    let at;
+    if(cell){ const idx=parseInt(cell.dataset.idx)||0; at=idx+(insertAfterSide(cell,e)?1:0); }
+    else { at=(curLib.items||[]).length; }   // セル外＝末尾
+    placeInsert(insertType,at);
+  },true);
+})();
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&insertType)exitInsertMode(); });
 
 // ドラッグ並べ替え（要素の「間」に差し込み可能）
 let dragIdx=-1;
