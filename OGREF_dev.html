@@ -3302,7 +3302,7 @@ window.importLocalAll=async function(silent){
       // Reuse existing folder if same name
       let existing=folders.find(f=>f.name===folderName);
       if(existing){folderMap[folderName]=existing.id;continue;}
-      const ref=await addDoc(collection(db,C_WS,currentWsId,'folders'),{name:folderName,color:COLORS[colorIdx%COLORS.length],createdAt:Date.now()});
+      const ref=await addDoc(collection(db,C_WS,currentWsId,'folders'),{name:folderName,color:COLORS[colorIdx%COLORS.length],source:'local',createdAt:Date.now()});
       folderMap[folderName]=ref.id;
       colorIdx++;
     }
@@ -3439,7 +3439,8 @@ async function dedupLocalFolders(){
 // どの動画からも参照されない 空のローカル由来フォルダを削除（manual・親フォルダ・参照ありは残す）。globalの folders を更新。
 async function cleanupEmptyLocalFolders(){
   const used=new Set(videos.map(v=>v.folder).filter(Boolean));
-  const empties=folders.filter(f=>f.source==='local' && !used.has(f.id) && !folders.some(o=>o.id!==f.id && o.name.startsWith(f.name+'/')));
+  // 手動作成(source:'manual')以外の空フォルダを削除。source未設定の従来フォルダ(一括登録/旧版)も対象。
+  const empties=folders.filter(f=>f.source!=='manual' && !used.has(f.id) && !folders.some(o=>o.id!==f.id && o.name.startsWith(f.name+'/')));
   for(const f of empties){ try{await deleteDoc(doc(db,C_WS,currentWsId,'folders',f.id));}catch(e){} }
   if(empties.length) folders=folders.filter(f=>!empties.some(e=>e.id===f.id));
 }
