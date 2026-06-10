@@ -2585,7 +2585,7 @@ function showIdleHint(on){
       el=document.createElement('div');
       el.id='idleHint';
       el.style.cssText='position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:4000;background:var(--bg3,#1e1e24);color:var(--text2,#cfcfd6);border:1px solid var(--border2,#3a3a44);border-radius:20px;padding:7px 14px;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,.4);pointer-events:none;display:flex;align-items:center;gap:7px';
-      el.innerHTML='⏸ 通信量節約のため自動再生を停止中 <span style="opacity:.7">— 画面を操作すると再開</span>';
+      el.innerHTML='⏸ 5分間操作が確認されなかったため自動再生を停止中 <span style="opacity:.7">— 画面を操作すると再開</span>';
       document.body.appendChild(el);
     }
   } else if(el){ el.remove(); }
